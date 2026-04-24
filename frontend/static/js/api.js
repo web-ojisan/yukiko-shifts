@@ -10,6 +10,12 @@ function authHeaders() {
 
 async function request(url, options = {}) {
   const res = await fetch(url, { headers: authHeaders(), ...options });
+  if (res.status === 401) {
+    localStorage.removeItem('shift_token');
+    localStorage.removeItem('shift_user');
+    window.location.reload();
+    return;
+  }
   if (res.status === 204) return null;
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
