@@ -27,6 +27,42 @@ shift-app/
 
 ---
 
+## クイックスタート
+
+### 事前準備：ENV設定
+
+起動コマンドの以下の値を自分の環境に合わせて書き換えてください：
+
+| 変数 | デフォルト値 | 変更が必要なケース |
+|------|------------|-----------------|
+| `JWT_SECRET` | `local-dev-secret-32chars-minimum!!` | **本番環境では必ず**32文字以上のランダム文字列に変更 |
+| `TZ` | `Asia/Tokyo` | タイムゾーンが異なる場合 |
+
+JWTシークレットの生成例：
+```bash
+openssl rand -base64 32
+```
+
+プッシュ通知を使う場合は追加で VAPID KEY も設定してください（後述）。
+
+### Clone直後はこの1コマンドで起動
+
+```bash
+# Clone して 必要なENV設定終わったら以下のコマンドで起動
+mkdir -p data && rm -f shift.db shift.db-shm shift.db-wal && docker build -t shift-app . && docker rm -f shift-app 2>/dev/null; docker run --name shift-app -p 8989:8989 -v "$(pwd)/data:/app/data" -e JWT_SECRET="local-dev-secret-32chars-minimum!!" -e TZ=Asia/Tokyo shift-app
+```
+
+起動したら `http://localhost:8989` を開いてログイン：
+
+| ロール | ID | パスワード |
+|--------|-----|-----------|
+| 管理者 | `admin` | `admin1234` |
+| 作業者（例） | `w001` | `worker1234` |
+
+> ⚠️ **本番運用前に必ずパスワードを変更してください。**
+
+---
+
 ## MacBook Pro ローカル動作確認手順（Docker使用）
 
 ### 1. Docker Desktop のインストール
@@ -54,6 +90,12 @@ cd shift-app
 # DBデータ永続化用ディレクトリを作成
 mkdir -p data
 ```
+
+> ⚠️ **重要**: プロジェクトルート直下に `shift.db` が残っていると古いDBが参照されてログインできなくなります。
+> もし存在する場合は削除してください：
+> ```bash
+> rm -f shift.db shift.db-shm shift.db-wal
+> ```
 
 ---
 
@@ -92,6 +134,9 @@ docker run \
 2025/05/25 09:00:00 起動: http://localhost:8989
 ```
 
+> ⚠️ **注意**: `-e` のオプション値をコピペするときに余計な文字列が混入しないよう注意してください。
+> 特に `JWT_SECRET` の値に別のコマンドが混入するとログインに失敗します。
+
 ---
 
 ### 5. ブラウザで確認
@@ -99,6 +144,15 @@ docker run \
 ```
 http://localhost:8989
 ```
+
+#### 開発用ログイン情報
+
+| ロール | ID | パスワード |
+|--------|-----|-----------|
+| 管理者 | `admin` | `admin1234` |
+| 作業者（例） | `w001` | `worker1234` |
+
+> ⚠️ **本番運用前に必ずパスワードを変更してください。**
 
 ---
 
@@ -130,8 +184,28 @@ docker run \
   -p 8989:8989 \
   -v "$(pwd)/data:/app/data" \
   -e JWT_SECRET="local-dev-secret-32chars-minimum!!" \
+  -e TZ=Asia/Tokyo \
   shift-app
 ```
+
+---
+
+### 8. DBを初期化したいとき（データをリセット）
+
+```bash
+docker rm -f shift-app
+rm -rf ./data
+mkdir ./data
+docker run \
+  --name shift-app \
+  -p 8989:8989 \
+  -v "$(pwd)/data:/app/data" \
+  -e JWT_SECRET="local-dev-secret-32chars-minimum!!" \
+  -e TZ=Asia/Tokyo \
+  shift-app
+```
+
+> ⚠️ `./data` を削除するとすべてのデータが消えます。本番環境では実行しないでください。
 
 ---
 
@@ -152,6 +226,18 @@ docker compose down
 
 ---
 
+### トラブルシューティング
+
+| 症状 | 原因 | 対処 |
+|------|------|------|
+| `Failed to fetch` でログインできない | コンテナが起動していない | `docker ps` で確認、`docker start shift-app` で再起動 |
+| ログインで401エラー | 古いDBが残っている | ルートの `shift.db` を削除してDBリセット |
+| `Unable to find image` エラー | イメージが未ビルド | `docker build -t shift-app .` を実行 |
+| `migration: skipped (already applied)` が全部出る | 古いDBが参照されている | ルートの `shift.db` を削除 |
+| プッシュ通知が動かない | VAPID KEYが未設定 | 下記「環境変数一覧」を参照 |
+
+---
+
 ## 環境変数一覧
 
 | 変数名 | デフォルト値 | 説明 |
@@ -160,6 +246,15 @@ docker compose down
 | `DB_PATH` | `/app/data/shift.db` | SQLiteファイルパス |
 | `PORT` | `8989` | サーバーポート |
 | `TZ` | `Asia/Tokyo` | タイムゾーン |
+| `VAPID_PUBLIC_KEY` | （任意） | プッシュ通知用公開鍵 |
+| `VAPID_PRIVATE_KEY` | （任意） | プッシュ通知用秘密鍵 |
+
+#### VAPID KEYの生成方法
+
+```bash
+docker run --rm golang:1.22-alpine sh -c \
+  'go install github.com/SherClockHolmes/webpush-go/cmd/vapid@latest && vapid'
+```
 
 ---
 
