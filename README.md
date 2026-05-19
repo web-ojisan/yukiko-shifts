@@ -2,6 +2,42 @@
 
 Go + Vanilla JS による施工会社向け簡易シフト管理WEBアプリ。
 
+
+---
+
+## ⚠️ Security Notice / セキュリティに関する免責事項
+
+### Authentication Model
+
+This system implements QR code-based authentication as a deliberate design choice prioritizing
+field usability over security strength. Each user is assigned a static QR code that grants
+access without password verification.
+
+**This design does not conform to standard security practices and is provided as-is.**
+
+### Disclaimer
+
+> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
+> THE AUTHORS AND CONTRIBUTORS SHALL NOT BE HELD LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+> LIABILITY — INCLUDING BUT NOT LIMITED TO UNAUTHORIZED ACCESS, IDENTITY SPOOFING, DATA
+> BREACH, OR LABOR RECORD DISPUTES — ARISING FROM THE USE OF THIS AUTHENTICATION MECHANISM
+> OR ANY PART OF THIS SOFTWARE.
+
+本ソフトウェアは現状有姿で提供されます。QRコード認証方式に起因するなりすまし、不正アクセス、勤怠記録の改ざん、その他いかなる損害についても、開発者および貢献者は一切の責任を負いません。
+
+### Known Security Limitations
+
+- **Static credentials:** QR codes do not expire and cannot be invalidated without manual regeneration.
+- **No possession proof:** A photographed or printed QR code is functionally equivalent to the original.
+- **No audit trail integrity guarantee:** Log entries cannot be cryptographically attributed to the physical device holder.
+
+### Recommended Mitigations *(PRs welcome)*
+
+- Replace static QR codes with TOTP-based one-time codes
+- Add IP/geolocation binding per user session
+- Implement anomaly detection on login patterns
+
+---
 ## プロジェクト構成
 
 ```

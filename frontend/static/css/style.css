@@ -2324,3 +2324,142 @@ button.week-foreman-badge:hover { filter: brightness(1.15); }
   color: #dc2626;
   padding: 10px;
 }
+
+/* ============================================================
+   出退勤打刻カード
+   ============================================================ */
+
+.atd-card {
+  margin: 12px 12px 4px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.atd-no-shift {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  align-items: center;
+}
+.atd-no-shift-msg {
+  font-size: 14px;
+  color: #64748b;
+}
+
+.atd-ready {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 1px solid #93c5fd;
+}
+.atd-working {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 1px solid #86efac;
+}
+.atd-done {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.atd-site {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.atd-times {
+  font-size: 13px;
+  color: #475569;
+}
+
+.atd-done-msg {
+  font-size: 13px;
+  color: #16a34a;
+  font-weight: 500;
+}
+
+.atd-btn {
+  padding: 14px 0;
+  border: none;
+  border-radius: 10px;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+  letter-spacing: .04em;
+  transition: opacity .15s, transform .1s;
+}
+.atd-btn:active { transform: scale(.97); }
+
+.atd-btn-in {
+  background: #2563eb;
+  color: #fff;
+}
+.atd-btn-in:hover  { background: #1d4ed8; }
+
+.atd-btn-out {
+  background: #16a34a;
+  color: #fff;
+}
+.atd-btn-out:hover { background: #15803d; }
+
+/* ── 写真確認オーバーレイ ── */
+.atd-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+}
+
+.atd-preview-box {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.atd-preview-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+  text-align: center;
+}
+
+.atd-preview-img {
+  width: 100%;
+  border-radius: 10px;
+  object-fit: cover;
+  max-height: 52vh;
+}
+
+.atd-preview-note {
+  font-size: 12px;
+  color: #64748b;
+  text-align: center;
+}
+
+.atd-preview-actions {
+  display: flex;
+  gap: 10px;
+}
+.atd-preview-actions button { flex: 1; padding: 12px 0; font-size: 15px; }
+
+.atd-preview-err {
+  font-size: 13px;
+  color: #dc2626;
+  min-height: 18px;
+  text-align: center;
+}
+

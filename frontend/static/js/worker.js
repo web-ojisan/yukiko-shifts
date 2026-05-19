@@ -4,6 +4,7 @@ import {
   apiGetBoard, apiGetMyReports, apiUpsertReport,
   apiGetLockStatus, apiUpdateSiteClient, apiHopeSubmit,
   apiGetForemanAssignments, apiGetTeamReports, apiUpsertTeamReports,
+  apiGetTodayAttendance, apiClockIn, apiClockOut,
 } from './api.js';
 import { HOLIDAYS } from './holidays.js';
 
@@ -17,6 +18,7 @@ const st = {
   locked:       false,
   expandedDate: null,
   loading:      false,
+  todayStatus:  null,      // TodayStatusResponse | null
 };
 
 const DOW_JA   = ['日', '月', '火', '水', '木', '金', '土'];
@@ -57,12 +59,14 @@ async function load() {
   const to   = fmtYMD(new Date(y, m + 1, 0));
 
   try {
-    const [boardData, reportData, lockData, foremanData] = await Promise.all([
+    const [boardData, reportData, lockData, foremanData, todayData] = await Promise.all([
       apiGetBoard(from, to).catch(() => []),
       apiGetMyReports(y, m + 1).catch(() => ({ reports: [] })),
       apiGetLockStatus(y, m + 1).catch(() => ({ locked: false })),
       apiGetForemanAssignments(from, to).catch(() => []),
+      apiGetTodayAttendance().catch(() => null),
     ]);
+    st.todayStatus = todayData;
 
     st.assignments = (boardData ?? []).filter(a => a.user_id === st.userId);
     st.locked      = lockData?.locked ?? false;
@@ -117,6 +121,7 @@ function render() {
 
   root.innerHTML = `
     <div class="wk-page">
+      ${renderAttendanceCard()}
       <div class="wk-month-header">
         <button class="wk-month-nav" id="wk-prev">‹</button>
         <div class="wk-month-center">
@@ -127,7 +132,12 @@ function render() {
       </div>
       <div class="wk-calendar">${rows}</div>
       ${renderMonthlyTable(y, m + 1, assignByDate)}
-    </div>`;
+    </div>
+    <input type="file" id="wk-photo-input" accept="image/*" capture="environment" style="display:none">`;
+
+  // 打刻ボタンのイベント登録
+  document.getElementById('wk-btn-clockin')?.addEventListener('click', () => startClock('in'));
+  document.getElementById('wk-btn-clockout')?.addEventListener('click', () => startClock('out'));
 
   document.getElementById('wk-prev').addEventListener('click', () => {
     st.expandedDate = null;
@@ -700,6 +710,135 @@ async function openForemanTeamModal(dateStr, siteId, siteName) {
       saveBtn.textContent = '全員分を保存';
     }
   });
+}
+
+// ─── 出退勤カード ────────────────────────────────────────────
+function renderAttendanceCard() {
+  const s = st.todayStatus;
+  if (!s) return '';
+
+  if (!s.has_shift) {
+    return `
+      <div class="atd-card atd-no-shift">
+        <span class="atd-no-shift-msg">本日は作業予定はありません</span>
+      </div>`;
+  }
+
+  const a     = s.attendance;
+  const slot  = s.time_slot ?? '';
+  const slotBadge = slot ? `<span class="badge ${slot === 'AM' ? 'badge-am' : slot === 'PM' ? 'badge-pm' : 'badge-all'}">${slot}</span>` : '';
+
+  if (!a) {
+    return `
+      <div class="atd-card atd-ready">
+        <div class="atd-site">${escHtml(s.site_name ?? '')} ${slotBadge}</div>
+        <button class="atd-btn atd-btn-in" id="wk-btn-clockin">
+          📷 出勤する
+        </button>
+      </div>`;
+  }
+
+  const inTime = fmtTime(a.clock_in_at);
+  if (!a.clock_out_at) {
+    return `
+      <div class="atd-card atd-working">
+        <div class="atd-site">✅ ${escHtml(s.site_name ?? '')} ${slotBadge}</div>
+        <div class="atd-times">出勤 ${inTime}</div>
+        <button class="atd-btn atd-btn-out" id="wk-btn-clockout">
+          📷 退勤する
+        </button>
+      </div>`;
+  }
+
+  const outTime = fmtTime(a.clock_out_at);
+  return `
+    <div class="atd-card atd-done">
+      <div class="atd-site">${escHtml(s.site_name ?? '')} ${slotBadge}</div>
+      <div class="atd-times">出勤 ${inTime} → 退勤 ${outTime}</div>
+      <div class="atd-done-msg">お疲れ様でした</div>
+    </div>`;
+}
+
+function fmtTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+// ─── 写真撮影 → 確認 → アップロードフロー ───────────────────
+function startClock(direction) {
+  const input = document.getElementById('wk-photo-input');
+  if (!input) return;
+
+  const handler = async () => {
+    input.removeEventListener('change', handler);
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+
+    showPhotoPreview(file, direction);
+  };
+
+  input.addEventListener('change', handler);
+  input.click();
+}
+
+function showPhotoPreview(file, direction) {
+  const label = direction === 'in' ? '出勤' : '退勤';
+  const url   = URL.createObjectURL(file);
+
+  const overlay = document.createElement('div');
+  overlay.className = 'atd-overlay';
+  overlay.innerHTML = `
+    <div class="atd-preview-box">
+      <p class="atd-preview-label">📷 ${label}写真の確認</p>
+      <img class="atd-preview-img" src="${url}" alt="preview">
+      <div class="atd-preview-note">現場の状況が写っていることを確認してください</div>
+      <div class="atd-preview-actions">
+        <button class="btn-secondary" id="atd-cancel">撮り直す</button>
+        <button class="btn-primary"   id="atd-confirm">${label}を記録する</button>
+      </div>
+      <div class="atd-preview-err" id="atd-err"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const close = () => { URL.revokeObjectURL(url); overlay.remove(); };
+
+  document.getElementById('atd-cancel').addEventListener('click', close);
+
+  document.getElementById('atd-confirm').addEventListener('click', async () => {
+    const confirmBtn = document.getElementById('atd-confirm');
+    const errEl      = document.getElementById('atd-err');
+    confirmBtn.disabled    = true;
+    confirmBtn.textContent = '送信中…';
+
+    try {
+      const compressed = await compressPhoto(file);
+      if (direction === 'in') {
+        await apiClockIn(compressed);
+      } else {
+        await apiClockOut(compressed);
+      }
+      close();
+      st.todayStatus = await apiGetTodayAttendance().catch(() => st.todayStatus);
+      render();
+      showToast(`${label}を記録しました`, 'success');
+    } catch (err) {
+      errEl.textContent      = err.message || 'エラーが発生しました';
+      confirmBtn.disabled    = false;
+      confirmBtn.textContent = `${label}を記録する`;
+    }
+  });
+}
+
+async function compressPhoto(file, maxWidth = 1280, quality = 0.82) {
+  const bitmap = await createImageBitmap(file);
+  const scale  = Math.min(1, maxWidth / bitmap.width);
+  const canvas = document.createElement('canvas');
+  canvas.width  = Math.round(bitmap.width  * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
 }
 
 // ─── Init ────────────────────────────────────────────────────

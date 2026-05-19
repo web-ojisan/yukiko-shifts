@@ -316,6 +316,37 @@ type ForemanSuggestion struct {
 }
 
 // ──────────────────────────────────────
+// AttendanceLog（出退勤打刻ログ）
+// ──────────────────────────────────────
+
+type AttendanceLog struct {
+	ID                 int64      `db:"id"                   json:"id"`
+	TenantID           int64      `db:"tenant_id"            json:"-"`
+	UserID             int64      `db:"user_id"              json:"user_id"`
+	SiteID             int64      `db:"site_id"              json:"site_id"`
+	WorkDate           string     `db:"work_date"            json:"work_date"`
+	ClockInAt          time.Time  `db:"clock_in_at"          json:"clock_in_at"`
+	ClockInPhotoURL    string     `db:"clock_in_photo_url"   json:"clock_in_photo_url"`
+	ClockOutAt         *time.Time `db:"clock_out_at"         json:"clock_out_at,omitempty"`
+	ClockOutPhotoURL   *string    `db:"clock_out_photo_url"  json:"clock_out_photo_url,omitempty"`
+	Note               *string    `db:"note"                 json:"note,omitempty"`
+	CreatedAt          time.Time  `db:"created_at"           json:"created_at"`
+	UpdatedAt          time.Time  `db:"updated_at"           json:"updated_at"`
+
+	// JOINで取得
+	SiteName *string `db:"site_name" json:"site_name,omitempty"`
+}
+
+// TodayStatusResponse は今日の打刻状態レスポンス
+type TodayStatusResponse struct {
+	HasShift   bool           `json:"has_shift"`
+	SiteID     *int64         `json:"site_id,omitempty"`
+	SiteName   *string        `json:"site_name,omitempty"`
+	TimeSlot   *string        `json:"time_slot,omitempty"`
+	Attendance *AttendanceLog `json:"attendance,omitempty"`
+}
+
+// ──────────────────────────────────────
 // Tenant（テナント）
 // ──────────────────────────────────────
 type Plan string

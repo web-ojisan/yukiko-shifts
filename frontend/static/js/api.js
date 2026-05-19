@@ -246,3 +246,44 @@ export function apiUpsertTeamReports(siteId, workDate, members) {
     body: JSON.stringify({ site_id: siteId, work_date: workDate, members }),
   });
 }
+
+// ─── 出退勤打刻 ───────────────────────────────────────────────
+
+// GET /api/attendance/today
+export function apiGetTodayAttendance() {
+  return request('/api/attendance/today');
+}
+
+// POST /api/attendance/clock-in  (photo: Blob)
+export function apiClockIn(photoBlob) {
+  const token = localStorage.getItem('shift_token');
+  const form  = new FormData();
+  form.append('photo', photoBlob, 'photo.jpg');
+  return fetch('/api/attendance/clock-in', {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  }).then(async res => {
+    if (res.status === 401) { localStorage.removeItem('shift_token'); window.location.reload(); return; }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
+  });
+}
+
+// POST /api/attendance/clock-out  (photo: Blob)
+export function apiClockOut(photoBlob) {
+  const token = localStorage.getItem('shift_token');
+  const form  = new FormData();
+  form.append('photo', photoBlob, 'photo.jpg');
+  return fetch('/api/attendance/clock-out', {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  }).then(async res => {
+    if (res.status === 401) { localStorage.removeItem('shift_token'); window.location.reload(); return; }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
+  });
+}
