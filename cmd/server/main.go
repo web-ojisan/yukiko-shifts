@@ -65,12 +65,11 @@ func main() {
 	reportRepo := repository.NewDailyReportRepository(db)
 	siteRepo   := repository.NewSiteRepository(db)
 	lockRepo   := repository.NewLockRepository(db)
-	pushRepo       := repository.NewPushRepository(db)
-	foremanRepo    := repository.NewForemanRepository(db)
-	attendanceRepo := repository.NewAttendanceRepository(db)
-	shiftVal       := validator.New(shiftRepo)
+	pushRepo    := repository.NewPushRepository(db)
+	foremanRepo := repository.NewForemanRepository(db)
+	shiftVal    := validator.New(shiftRepo)
 
-	photoStorage := storage.New(getEnv("DATA_DIR", "./data"))
+	attendanceEnabled := getEnv("ATTENDANCE_ENABLED", "false") == "true"
 
 	// プッシュ送信者（キー未設定なら nil → 全送信がno-op）
 	pushSender := push.NewSender(vapidPrivateKey, vapidPublicKey)
@@ -81,8 +80,17 @@ func main() {
 	siteH    := handler.NewSiteHandler(siteRepo)
 	lockH    := handler.NewLockHandler(lockRepo)
 	pushH    := handler.NewPushHandler(pushRepo, userRepo, pushSender)
-	foremanH    := handler.NewForemanHandler(foremanRepo, shiftRepo)
-	attendanceH := handler.NewAttendanceHandler(attendanceRepo, photoStorage)
+	foremanH := handler.NewForemanHandler(foremanRepo, shiftRepo)
+
+	var attendanceH *handler.AttendanceHandler
+	if attendanceEnabled {
+		attendanceRepo := repository.NewAttendanceRepository(db)
+		photoStorage   := storage.New(getEnv("DATA_DIR", "./data"))
+		attendanceH     = handler.NewAttendanceHandler(attendanceRepo, photoStorage)
+		log.Println("出退勤打刻機能: 有効")
+	} else {
+		log.Println("出退勤打刻機能: 無効 (ATTENDANCE_ENABLED=true で有効化)")
+	}
 
 	// 毎日 19:00 JST に翌日シフトのリマインドを送信
 	go startDailyReminder(db, pushRepo, pushSender)
@@ -97,10 +105,12 @@ func main() {
 	r.Handle("/static/*", http.StripPrefix("/static/",
 		http.FileServer(http.Dir("./frontend/static"))))
 
-	// ローカル開発用 写真配信（R2利用時は不要）
-	dataDir := getEnv("DATA_DIR", "./data")
-	r.Handle("/photos/*", http.StripPrefix("/photos/",
-		http.FileServer(http.Dir(dataDir+"/photos"))))
+	// ローカル開発用 写真配信（ATTENDANCE_ENABLED かつ R2未設定時のみ有効）
+	if attendanceEnabled && os.Getenv("R2_ACCOUNT_ID") == "" {
+		dataDir := getEnv("DATA_DIR", "./data")
+		r.Handle("/photos/*", http.StripPrefix("/photos/",
+			http.FileServer(http.Dir(dataDir+"/photos"))))
+	}
 
 	// 認証不要
 	r.Post("/api/auth/login", authH.Login)
@@ -166,10 +176,12 @@ func main() {
 		r.Get("/api/foreman/team-reports", foremanH.GetTeamReports)
 		r.Put("/api/foreman/team-reports", foremanH.UpsertTeamReports)
 
-		// 出退勤打刻
-		r.Get("/api/attendance/today",      attendanceH.GetToday)
-		r.Post("/api/attendance/clock-in",  attendanceH.ClockIn)
-		r.Post("/api/attendance/clock-out", attendanceH.ClockOut)
+		// 出退勤打刻（ATTENDANCE_ENABLED=true の場合のみ）
+		if attendanceH != nil {
+			r.Get("/api/attendance/today",      attendanceH.GetToday)
+			r.Post("/api/attendance/clock-in",  attendanceH.ClockIn)
+			r.Post("/api/attendance/clock-out", attendanceH.ClockOut)
+		}
 	})
 
 	// SPAフォールバック

@@ -715,7 +715,8 @@ async function openForemanTeamModal(dateStr, siteId, siteName) {
 // ─── 出退勤カード ────────────────────────────────────────────
 function renderAttendanceCard() {
   const s = st.todayStatus;
-  if (!s) return '';
+  // null（未取得）またはレスポンスが正規の TodayStatusResponse でない場合はカード非表示
+  if (!s || typeof s.has_shift !== 'boolean') return '';
 
   if (!s.has_shift) {
     return `
