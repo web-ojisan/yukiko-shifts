@@ -52,6 +52,13 @@ function renderLogin(errMsg = '') {
             placeholder="パスワードを入力" autocomplete="current-password">
         </div>
         <button class="btn btn-primary" id="login-btn">ログイン</button>
+        <div class="demo-section">
+          <div class="demo-divider"><span>デモ用クイックログイン</span></div>
+          <div class="demo-btns">
+            <button class="btn btn-demo btn-demo-admin" id="demo-admin-btn">管理者</button>
+            <button class="btn btn-demo btn-demo-worker" id="demo-worker-btn">作業者</button>
+          </div>
+        </div>
       </div>
     </div>`;
 
@@ -85,8 +92,16 @@ function renderLogin(errMsg = '') {
     }
   };
 
+  const doQuickLogin = async (id, pw) => {
+    idEl.value = id;
+    pwEl.value = pw;
+    await doLogin();
+  };
+
   btnEl.addEventListener('click', doLogin);
   pwEl.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  document.getElementById('demo-admin-btn').addEventListener('click', () => doQuickLogin('admin', 'admin1234'));
+  document.getElementById('demo-worker-btn').addEventListener('click', () => doQuickLogin('w001', 'worker1234'));
   idEl.focus();
 }
 

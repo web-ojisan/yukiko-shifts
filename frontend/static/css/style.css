@@ -140,6 +140,43 @@ body {
 .btn-primary:hover:not(:disabled) { background: var(--color-primary-hover); }
 .btn-primary:disabled { opacity: .55; cursor: not-allowed; }
 
+.demo-section { margin-top: 20px; }
+.demo-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  color: var(--color-text-sub);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.demo-divider::before,
+.demo-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+.demo-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.btn-demo {
+  padding: 10px;
+  font-size: 13px;
+  border: 1.5px solid;
+  background: white;
+}
+.btn-demo-admin {
+  border-color: #2563eb;
+  color: #2563eb;
+}
+.btn-demo-admin:hover { background: #eff6ff; }
+.btn-demo-worker {
+  border-color: #16a34a;
+  color: #16a34a;
+}
+.btn-demo-worker:hover { background: #f0fdf4; }
+
 .btn-secondary {
   background: white;
   color: var(--color-text);
