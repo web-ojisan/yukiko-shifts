@@ -13,7 +13,7 @@ RUN go mod tidy && \
     go build -ldflags="-s -w" -o shift-server ./cmd/server
 
 # ── 実行ステージ ────────────────────────────────────────
-FROM alpine:3.19
+FROM alpine:3.19 AS production
 
 RUN apk add --no-cache sqlite-libs tzdata
 ENV TZ=Asia/Tokyo

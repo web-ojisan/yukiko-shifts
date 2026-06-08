@@ -1,0 +1,25 @@
+services:
+  app:
+    build:
+      context: .
+      target: production
+    container_name: shift-app
+    ports:
+      - "127.0.0.1:8990:8989"
+    volumes:
+      - ./data:/app/data
+    environment:
+      JWT_SECRET: "${JWT_SECRET}"
+      TZ: Asia/Tokyo
+      DB_PATH: /app/data/shift.db
+      PORT: "8989"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - proxy-net
+      - default
+
+networks:
+  proxy-net:
+    external: true
