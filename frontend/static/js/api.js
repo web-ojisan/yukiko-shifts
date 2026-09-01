@@ -25,15 +25,22 @@ async function request(url, options = {}) {
 }
 
 // POST /api/auth/login
-export async function apiLogin(employeeId, password) {
+export async function apiLogin(employeeId, password, companyCode = '') {
+  const body = { employee_id: employeeId, password };
+  if (companyCode) body.company_code = companyCode;
   const res = await fetch('/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ employee_id: employeeId, password }),
+    body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'ログインに失敗しました');
   return data; // { token, user }
+}
+
+// POST /api/admin/billing/portal — 契約・お支払いポータル(Stripe)のURL取得
+export function apiBillingPortal() {
+  return request('/api/admin/billing/portal', { method: 'POST' });
 }
 
 // GET /api/shifts/board?from=YYYY-MM-DD&to=YYYY-MM-DD

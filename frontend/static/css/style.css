@@ -2575,3 +2575,6 @@ button.week-foreman-badge:hover { filter: brightness(1.15); }
   padding: 5px 12px;
   flex-shrink: 0;
 }
+
+/* ─── ログイン: 会社コード任意ラベル ──────────────────────── */
+.login-optional { font-weight: 400; font-size: 0.75rem; color: #94a3b8; }

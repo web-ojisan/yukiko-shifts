@@ -86,7 +86,20 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.userRepo.FindByEmployeeID(r.Context(), req.EmployeeID)
+	// 会社コード(テナントslug)が指定されていればテナントを絞り込む。
+	// 未指定の場合、同一社員IDが複数テナントに存在すると特定できないため拒否する。
+	var user *model.User
+	var err error
+	if req.CompanyCode != "" {
+		user, err = h.userRepo.FindByEmployeeIDAndSlug(r.Context(), req.CompanyCode, req.EmployeeID)
+	} else {
+		n, cerr := h.userRepo.CountActiveByEmployeeID(r.Context(), req.EmployeeID)
+		if cerr == nil && n > 1 {
+			writeError(w, http.StatusUnauthorized, "会社コードを入力してください")
+			return
+		}
+		user, err = h.userRepo.FindByEmployeeID(r.Context(), req.EmployeeID)
+	}
 	if err != nil || user == nil {
 		writeError(w, http.StatusUnauthorized, "IDまたはパスワードが正しくありません")
 		return

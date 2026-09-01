@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>お申し込み完了 — 北のオヤカタ</title>
+<style>
+  :root {
+    --snow: #F2F4F6; --card: #FFFFFF; --ink: #182530; --muted: #55646E;
+    --sea: #2C5A78; --safety: #D9560B; --line: #C7D1D7; --warn-bg: #FFF3CD; --warn: #7A5C00;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--snow); color: var(--ink);
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    line-height: 1.8;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 48px 20px 80px; }
+  h1 { font-size: 24px; font-weight: 800; margin: 0 0 8px; }
+  .sub { color: var(--muted); font-size: 14px; margin-bottom: 28px; }
+  .cred {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 26px 28px; margin-bottom: 20px;
+  }
+  .row { display: flex; justify-content: space-between; align-items: baseline;
+         padding: 12px 0; border-bottom: 1px dashed var(--line); gap: 16px; }
+  .row:last-child { border-bottom: none; }
+  .k { font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .v { font-family: ui-monospace, Menlo, monospace; font-size: 20px; font-weight: 700;
+       letter-spacing: .04em; word-break: break-all; }
+  .warn {
+    background: var(--warn-bg); color: var(--warn); border-radius: 8px;
+    padding: 14px 18px; font-size: 13.5px; margin-bottom: 24px;
+  }
+  .btn {
+    display: block; text-align: center; width: 100%; padding: 15px; font-size: 16px;
+    font-weight: 700; background: var(--safety); color: #fff; border: none;
+    border-radius: 8px; cursor: pointer; text-decoration: none;
+  }
+  .loading { text-align: center; color: var(--muted); padding: 60px 0; }
+  .spin { display: inline-block; width: 28px; height: 28px; border: 3px solid var(--line);
+          border-top-color: var(--sea); border-radius: 50%; animation: sp 1s linear infinite; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="loading" class="loading">
+    <div class="spin"></div>
+    <p>お申し込みを処理しています…<br>（通常10秒以内に完了します）</p>
+  </div>
+
+  <div id="done" style="display:none">
+    <h1>お申し込みありがとうございます</h1>
+    <p class="sub">御社専用の環境を作成しました。以下の情報でログインできます。</p>
+
+    <div class="cred">
+      <div class="row"><span class="k">会社コード</span><span class="v" id="cc"></span></div>
+      <div class="row"><span class="k">管理者ID</span><span class="v" id="eid"></span></div>
+      <div class="row" id="pw-row"><span class="k">初期パスワード</span><span class="v" id="pw"></span></div>
+    </div>
+
+    <div class="warn" id="pw-warn">
+      <strong>この画面は一度しか表示されません。</strong><br>
+      初期パスワードを必ず控えてから次へ進んでください（弊社はパスワードを保持しないため、再表示できません）。
+      ログイン後の変更をおすすめします。
+    </div>
+
+    <a class="btn" href="/">ログイン画面へ</a>
+  </div>
+</div>
+
+<script>
+  const sessionId = new URLSearchParams(location.search).get('session_id');
+  let tries = 0;
+
+  async function poll() {
+    tries++;
+    try {
+      const res = await fetch('/api/signup/complete?session_id=' + encodeURIComponent(sessionId));
+      const data = await res.json();
+      if (data.ready) {
+        document.getElementById('cc').textContent  = data.company_code;
+        document.getElementById('eid').textContent = data.employee_id;
+        if (data.initial_password) {
+          document.getElementById('pw').textContent = data.initial_password;
+        } else {
+          // 既に表示済み(再訪問)の場合
+          document.getElementById('pw-row').style.display = 'none';
+          document.getElementById('pw-warn').innerHTML =
+            '初期パスワードは表示済みのため再表示できません。ご不明な場合はお問い合わせください。';
+        }
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('done').style.display = 'block';
+        return;
+      }
+    } catch { /* リトライ */ }
+    if (tries < 30) {
+      setTimeout(poll, 2000);
+    } else {
+      document.getElementById('loading').innerHTML =
+        '<p>処理に時間がかかっています。数分後にこのページを再読み込みするか、お問い合わせください。</p>';
+    }
+  }
+  if (sessionId) poll();
+  else document.getElementById('loading').innerHTML = '<p>不正なアクセスです。</p>';
+</script>
+</body>
+</html>

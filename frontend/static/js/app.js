@@ -1,6 +1,6 @@
 // app.js — エントリーポイント・認証・ルーティング
 
-import { apiLogin } from './api.js';
+import { apiLogin, apiBillingPortal } from './api.js';
 import { initBoard } from './board.js';
 import { initSites } from './sites.js';
 import { initWorker } from './worker.js';
@@ -32,18 +32,21 @@ function navigate(page) {
 
 // ─── Login Page ──────────────────────────────────────────────
 
-// デモ用クイックログインの有効状態（サーバの DEMO_LOGIN 環境変数で制御）
-let _demoLogin = null; // null = 未取得
-async function fetchDemoLoginEnabled() {
-  if (_demoLogin === null) {
+// サーバ公開設定（デモログイン・課金有効状態）のキャッシュ
+let _config = null;
+async function fetchConfig() {
+  if (_config === null) {
     try {
       const res = await fetch('/api/config');
-      _demoLogin = (await res.json()).demo_login === true;
+      _config = await res.json();
     } catch {
-      _demoLogin = false;
+      _config = {};
     }
   }
-  return _demoLogin;
+  return _config;
+}
+async function fetchDemoLoginEnabled() {
+  return (await fetchConfig()).demo_login === true;
 }
 
 async function renderLogin(errMsg = '') {
@@ -57,6 +60,11 @@ async function renderLogin(errMsg = '') {
           <p>施工会社向け シフト・日報管理</p>
         </div>
         <div class="alert alert-error${errMsg ? ' visible' : ''}" id="login-err">${errMsg}</div>
+        <div class="form-group">
+          <label for="login-company">会社コード <span class="login-optional">(お持ちの場合)</span></label>
+          <input type="text" id="login-company" class="form-control"
+            placeholder="例: k7f3xq" autocomplete="organization">
+        </div>
         <div class="form-group">
           <label for="login-id">社員ID</label>
           <input type="text" id="login-id" class="form-control"
@@ -84,12 +92,14 @@ async function renderLogin(errMsg = '') {
 
   const idEl  = document.getElementById('login-id');
   const pwEl  = document.getElementById('login-pw');
+  const ccEl  = document.getElementById('login-company');
   const btnEl = document.getElementById('login-btn');
   const errEl = document.getElementById('login-err');
 
   const doLogin = async () => {
     const id = idEl.value.trim();
     const pw = pwEl.value;
+    const cc = ccEl?.value.trim() ?? '';
     if (!id || !pw) {
       errEl.textContent = 'IDとパスワードを入力してください';
       errEl.classList.add('visible');
@@ -99,7 +109,7 @@ async function renderLogin(errMsg = '') {
     btnEl.textContent = 'ログイン中…';
     errEl.classList.remove('visible');
     try {
-      const { token, user } = await apiLogin(id, pw);
+      const { token, user } = await apiLogin(id, pw, cc);
       saveAuth(token, user);
       currentPage = 'board';
       renderApp();
@@ -162,6 +172,24 @@ function renderApp() {
            style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0;">
       </div>
     </div>`;
+
+  // 課金有効時: 管理者に契約・お支払い(Stripeポータル)導線を表示
+  fetchConfig().then(cfg => {
+    if (cfg.billing_enabled !== true || !isAdmin || document.getElementById('billing-btn')) return;
+    const btn = document.createElement('button');
+    btn.id = 'billing-btn';
+    btn.className = 'btn-logout';
+    btn.textContent = '契約・お支払い';
+    btn.addEventListener('click', async () => {
+      try {
+        const { url } = await apiBillingPortal();
+        window.location.href = url;
+      } catch (e) {
+        alert(e.message);
+      }
+    });
+    document.querySelector('.header-right')?.prepend(btn);
+  });
 
   // デモ環境ではアプリ全体に注意バナーを表示
   fetchDemoLoginEnabled().then(on => {

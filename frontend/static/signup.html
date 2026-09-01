@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>利用開始 — 北のオヤカタ</title>
+<style>
+  :root {
+    --snow: #F2F4F6; --card: #FFFFFF; --ink: #182530; --muted: #55646E;
+    --sea: #2C5A78; --safety: #D9560B; --line: #C7D1D7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--snow); color: var(--ink);
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    line-height: 1.8;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 40px 20px 80px; }
+  h1 { font-size: 26px; font-weight: 800; margin: 0 0 6px; }
+  .sub { color: var(--muted); font-size: 14px; margin-bottom: 32px; }
+  .plans { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
+  .plan {
+    background: var(--card); border: 2px solid var(--line); border-radius: 10px;
+    padding: 22px 24px; cursor: pointer; transition: border-color .15s;
+  }
+  .plan.selected { border-color: var(--safety); }
+  .plan h2 { font-size: 18px; margin: 0 0 4px; }
+  .plan .cap { color: var(--sea); font-weight: 700; font-size: 14px; }
+  .plan ul { margin: 12px 0 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
+  .field { margin-bottom: 22px; }
+  label { display: block; font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+  input[type=text] {
+    width: 100%; padding: 12px 14px; font-size: 16px;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--card);
+  }
+  .btn {
+    display: block; width: 100%; padding: 15px; font-size: 16px; font-weight: 700;
+    background: var(--safety); color: #fff; border: none; border-radius: 8px; cursor: pointer;
+  }
+  .btn:disabled { opacity: .6; cursor: default; }
+  .note { font-size: 12.5px; color: var(--muted); margin-top: 16px; }
+  .err { color: #b3261e; font-size: 14px; margin-top: 12px; display: none; }
+  .err.visible { display: block; }
+  @media (max-width: 560px) { .plans { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>北のオヤカタ 利用開始</h1>
+  <p class="sub">プランを選び、会社名を入力してください。決済ページ(Stripe)に進みます。</p>
+
+  <div class="plans">
+    <div class="plan selected" data-plan="basic" role="button" tabindex="0">
+      <h2>ベーシック</h2>
+      <div class="cap">作業員 15名まで</div>
+      <ul>
+        <li>シフトボード・日報・QRログイン</li>
+        <li>職長管理・プッシュ通知</li>
+      </ul>
+    </div>
+    <div class="plan" data-plan="pro" role="button" tabindex="0">
+      <h2>プロ</h2>
+      <div class="cap">作業員 50名まで</div>
+      <ul>
+        <li>ベーシックの全機能</li>
+        <li>大規模な現場数・人数に対応</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="company">会社名</label>
+    <input type="text" id="company" placeholder="例: 株式会社北海道建設" maxlength="100">
+  </div>
+
+  <button class="btn" id="submit-btn">決済ページへ進む</button>
+  <div class="err" id="err"></div>
+
+  <p class="note">
+    お支払いはクレジットカード(法人カード可)です。決済情報は決済代行のStripe社が保持し、
+    弊社サーバーには保存されません。契約後はいつでもオンラインで解約できます。
+  </p>
+</div>
+
+<script>
+  let plan = 'basic';
+  document.querySelectorAll('.plan').forEach(el => {
+    const select = () => {
+      plan = el.dataset.plan;
+      document.querySelectorAll('.plan').forEach(p => p.classList.remove('selected'));
+      el.classList.add('selected');
+    };
+    el.addEventListener('click', select);
+    el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(); } });
+  });
+
+  document.getElementById('submit-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('submit-btn');
+    const err = document.getElementById('err');
+    const company = document.getElementById('company').value.trim();
+    err.classList.remove('visible');
+    if (!company) {
+      err.textContent = '会社名を入力してください';
+      err.classList.add('visible');
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = '決済ページを準備中…';
+    try {
+      const res = await fetch('/api/signup/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company_name: company, plan }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'エラーが発生しました');
+      window.location.href = data.url;
+    } catch (e) {
+      err.textContent = e.message;
+      err.classList.add('visible');
+      btn.disabled = false;
+      btn.textContent = '決済ページへ進む';
+    }
+  });
+</script>
+</body>
+</html>

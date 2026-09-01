@@ -291,6 +291,34 @@ docker compose down
 | `VAPID_PRIVATE_KEY` | （任意） | プッシュ通知用秘密鍵 |
 | `ATTENDANCE_ENABLED` | `false` | `true` で出退勤打刻機能を有効化 |
 | `DEMO_LOGIN` | `false` | `true` でログイン画面にデモ用クイックログインを表示（**本番では設定しない**） |
+| `BASE_URL` | `http://localhost:<PORT>` | 公開URL（Stripe Checkoutのリダイレクト先） |
+| `STRIPE_SECRET_KEY` 他 | （任意） | セルフサーブ課金用。下記「オンライン申込の設定」参照 |
+
+---
+
+## オンライン申込の設定（Stripe）
+
+`/signup` からのセルフサーブ契約を有効にする手順:
+
+1. [Stripeダッシュボード](https://dashboard.stripe.com)で商品を2つ作成（basic月額 / pro月額）し、各 **Price ID**（`price_...`）を控える
+2. 開発者 → APIキー から **シークレットキー**（`sk_...`）を取得
+3. 開発者 → Webhook でエンドポイント `https://<公開URL>/api/stripe/webhook` を登録し、
+   イベント `checkout.session.completed` / `customer.subscription.updated` /
+   `customer.subscription.deleted` を選択 → **署名シークレット**（`whsec_...`）を取得
+4. 環境変数を設定して起動:
+   ```
+   STRIPE_SECRET_KEY=sk_...
+   STRIPE_WEBHOOK_SECRET=whsec_...
+   STRIPE_PRICE_BASIC=price_...
+   STRIPE_PRICE_PRO=price_...
+   BASE_URL=https://<公開URL>
+   ```
+
+4変数が揃っていない場合、課金機能は無効のまま従来どおり動作します。
+ローカルでのWebhookテストは `stripe listen --forward-to localhost:8989/api/stripe/webhook`（Stripe CLI）が便利です。
+
+> 💡 決済情報・請求先はStripe側にのみ保存され、本アプリのDBには各種IDのみが残ります。
+> 申込完了画面の初期パスワードは一度表示すると破棄されます（メールは送信しない＝保持しない）。
 
 #### VAPID KEYの生成方法
 

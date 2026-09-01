@@ -18,6 +18,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite" // Pure Go SQLiteドライバ（CGO不要）
 
+	"github.com/yourorg/shift-app/internal/billing"
 	"github.com/yourorg/shift-app/internal/handler"
 	"github.com/yourorg/shift-app/internal/model"
 	"github.com/yourorg/shift-app/internal/push"
@@ -73,6 +74,7 @@ func main() {
 	pushRepo    := repository.NewPushRepository(db)
 	foremanRepo := repository.NewForemanRepository(db)
 	cryptoRepo  := repository.NewCryptoRepository(db)
+	billingRepo := repository.NewBillingRepository(db)
 	shiftVal    := validator.New(shiftRepo)
 
 	attendanceEnabled := getEnv("ATTENDANCE_ENABLED", "false") == "true"
@@ -92,6 +94,21 @@ func main() {
 	pushH    := handler.NewPushHandler(pushRepo, userRepo, pushSender)
 	foremanH := handler.NewForemanHandler(foremanRepo, shiftRepo)
 	cryptoH  := handler.NewCryptoHandler(cryptoRepo)
+
+	// Stripeセルフサーブ課金（キー未設定なら無効。既存機能には影響しない）
+	baseURL      := getEnv("BASE_URL", "http://localhost:"+port)
+	stripeClient := billing.New(
+		os.Getenv("STRIPE_SECRET_KEY"),
+		os.Getenv("STRIPE_WEBHOOK_SECRET"),
+		os.Getenv("STRIPE_PRICE_BASIC"),
+		os.Getenv("STRIPE_PRICE_PRO"),
+	)
+	billingH := handler.NewBillingHandler(billingRepo, stripeClient, baseURL)
+	if billingH.Enabled() {
+		log.Println("オンライン申込 (Stripe): 有効")
+	} else {
+		log.Println("オンライン申込 (Stripe): 無効 (STRIPE_SECRET_KEY 等の設定で有効化)")
+	}
 
 	var attendanceH *handler.AttendanceHandler
 	if attendanceEnabled {
@@ -129,14 +146,34 @@ func main() {
 	// フロント向け公開設定（ログイン画面が参照するため認証不要）
 	r.Get("/api/config", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"demo_login":%t}`, demoLoginEnabled)
+		fmt.Fprintf(w, `{"demo_login":%t,"billing_enabled":%t}`, demoLoginEnabled, billingH.Enabled())
 	})
 
-	// 認証必要 + テナント自動注入
+	// セルフサーブ申込（認証不要）
+	r.Post("/api/signup/checkout", billingH.SignupCheckout)
+	r.Get("/api/signup/complete",  billingH.SignupComplete)
+	r.Post("/api/stripe/webhook",  billingH.Webhook)
+	r.Get("/signup", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./frontend/static/signup.html")
+	})
+	r.Get("/signup/complete", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./frontend/static/signup-complete.html")
+	})
+
+	// 契約ポータル: 契約停止中でも管理者が支払いを直せるよう、状態チェックの外に置く
+	r.Group(func(r chi.Router) {
+		r.Use(jwtauth.Verifier(tokenAuth))
+		r.Use(jwtauth.Authenticator(tokenAuth))
+		r.Use(tenantMiddleware)
+		r.Post("/api/admin/billing/portal", handler.RequireAdmin(billingH.Portal))
+	})
+
+	// 認証必要 + テナント自動注入 + 契約状態チェック
 	r.Group(func(r chi.Router) {
 		r.Use(jwtauth.Verifier(tokenAuth))
 		r.Use(jwtauth.Authenticator(tokenAuth))
 		r.Use(tenantMiddleware) // ★ JWTからtenant_idをContextに注入
+		r.Use(handler.RequireActiveTenant(billingRepo)) // 停止・解約テナントを弾く
 
 		r.Get("/api/workers",                    shiftH.GetWorkers)
 		r.Post("/api/admin/workers",             handler.RequireAdmin(shiftH.CreateWorker))

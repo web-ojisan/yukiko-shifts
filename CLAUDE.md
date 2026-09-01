@@ -88,6 +88,21 @@ frontend/static/css/style.css
   phone を使う新機能はブラウザ側で復号する
 - `users.email` カラムは未使用だったため削除済み(013)。メールアドレスは保持しない
 
+### セルフサーブ課金 (Stripe)
+
+- `internal/billing/` は Stripe の薄い自前RESTクライアント(SDK不使用)。
+  Checkout / Customer Portal / Webhook署名検証(HMAC-SHA256)のみ実装
+- フロー: `/signup` → Checkout → Webhook `checkout.session.completed` で
+  テナント+admin自動作成 → `/signup/complete` で会社コード・初期パスワードを**一度だけ**表示
+  (表示後は `signup_provisions.initial_password` を NULL 化。メールは送らない=持たない)
+- Webhookは**冪等**(同一セッション再送はスキップ)。テナント作成失敗時は5xxを返してStripeの再送に任せる
+- 契約状態: `customer.subscription.updated/deleted` → `tenants.status` を
+  active/suspended/cancelled に同期。`RequireActiveTenant` ミドルウェアが停止テナントを402で弾く
+  (**契約ポータル `/api/admin/billing/portal` だけは停止中でも通す** — 支払い修正のため)
+- ログインは会社コード(テナントslug)対応: 同一社員IDが複数テナントに存在する場合は
+  `company_code` 必須。QRログインはトークンがグローバル一意なので影響なし
+- STRIPE_* 未設定なら課金機能は全体が無効(既存機能に影響なし)。決済情報はStripe側にのみ存在する
+
 ### 機能フラグ
 
 - `ATTENDANCE_ENABLED=true` で出退勤打刻機能が有効化 (ハンドラー登録自体が条件分岐)
@@ -106,6 +121,10 @@ frontend/static/css/style.css
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | 任意 | Web Push 用 |
 | `ATTENDANCE_ENABLED` | 任意 | `true` で打刻機能有効 |
 | `DEMO_LOGIN` | 任意 | `true` でデモ用クイックログイン表示(本番では設定しない) |
+| `BASE_URL` | 課金時必須 | 公開URL(Checkoutのリダイレクト先。デフォルト `http://localhost:<PORT>`) |
+| `STRIPE_SECRET_KEY` | 任意 | Stripe秘密鍵。4つ全て設定で課金有効 |
+| `STRIPE_WEBHOOK_SECRET` | 任意 | Webhook署名シークレット(`whsec_...`) |
+| `STRIPE_PRICE_BASIC` / `STRIPE_PRICE_PRO` | 任意 | 各プランのStripe Price ID |
 | `DATA_DIR` | 任意 | 打刻写真の保存先 (デフォルト `./data`) |
 
 ## 規約・注意点

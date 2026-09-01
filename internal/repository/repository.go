@@ -328,6 +328,28 @@ func (r *UserRepository) FindByEmployeeID(ctx context.Context, eid string) (*mod
 	return &u, err
 }
 
+// CountActiveByEmployeeID は同一社員IDを持つ有効ユーザーの数を全テナント横断で返す。
+// 2以上なら会社コード(テナントslug)なしのログインは曖昧なため拒否する。
+func (r *UserRepository) CountActiveByEmployeeID(ctx context.Context, eid string) (int, error) {
+	var n int
+	err := r.db.GetContext(ctx, &n,
+		`SELECT COUNT(*) FROM users WHERE employee_id = ? AND status = 'active'`, eid)
+	return n, err
+}
+
+// FindByEmployeeIDAndSlug は会社コード(テナントslug)で絞り込んでユーザーを検索する
+func (r *UserRepository) FindByEmployeeIDAndSlug(ctx context.Context, slug, eid string) (*model.User, error) {
+	var u model.User
+	err := r.db.GetContext(ctx, &u, `
+		SELECT u.* FROM users u
+		JOIN tenants t ON u.tenant_id = t.id
+		WHERE t.slug = ? AND u.employee_id = ? AND u.status = 'active'`, slug, eid)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	return &u, err
+}
+
 func (r *UserRepository) FindAll(ctx context.Context) ([]model.User, error) {
 	var rows []model.User
 	err := r.db.SelectContext(ctx, &rows,

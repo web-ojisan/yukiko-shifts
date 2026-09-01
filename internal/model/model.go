@@ -173,8 +173,9 @@ type Announcement struct {
 // ──────────────────────────────────────
 
 type LoginRequest struct {
-	EmployeeID string `json:"employee_id"`
-	Password   string `json:"password"`
+	EmployeeID  string `json:"employee_id"`
+	Password    string `json:"password"`
+	CompanyCode string `json:"company_code,omitempty"` // テナントslug。同一社員IDが複数社に存在する場合に必須
 }
 
 type LoginResponse struct {
@@ -383,4 +384,21 @@ type TenantCryptoSettings struct {
 type CreateCryptoSettingsRequest struct {
 	KDFSalt  string `json:"kdf_salt"`
 	Verifier string `json:"verifier"`
+}
+
+// ──────────────────────────────────────
+// セルフサーブ申込 (Stripe課金)
+// ──────────────────────────────────────
+type SignupCheckoutRequest struct {
+	CompanyName string `json:"company_name"`
+	Plan        string `json:"plan"` // 'basic' | 'pro'
+}
+
+type SignupProvision struct {
+	CheckoutSessionID string    `db:"checkout_session_id" json:"-"`
+	TenantID          int64     `db:"tenant_id"           json:"-"`
+	TenantSlug        string    `db:"tenant_slug"         json:"company_code"`
+	AdminEmployeeID   string    `db:"admin_employee_id"   json:"employee_id"`
+	InitialPassword   *string   `db:"initial_password"    json:"initial_password,omitempty"`
+	CreatedAt         time.Time `db:"created_at"          json:"-"`
 }
