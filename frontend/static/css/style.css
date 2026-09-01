@@ -2500,3 +2500,23 @@ button.week-foreman-badge:hover { filter: brightness(1.15); }
   text-align: center;
 }
 
+
+/* ─── 連絡先E2E暗号化バナー（作業者管理） ─────────────────── */
+.wm-crypto-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  background: #fff8e6;
+  border: 1px solid #f0d48a;
+  color: #7a5c00;
+}
+.wm-crypto-banner.wm-crypto-ok {
+  background: #eefaf0;
+  border-color: #b5e0bf;
+  color: #1d6b34;
+}

@@ -31,6 +31,11 @@ access without password verification.
 - **No possession proof:** A photographed or printed QR code is functionally equivalent to the original.
 - **No audit trail integrity guarantee:** Log entries cannot be cryptographically attributed to the physical device holder.
 
+### 連絡先の取り扱い（E2E暗号化）
+
+作業者の電話番号は管理者ブラウザ内で暗号化してから保存でき、サーバ運営者は
+復号できません。仕組みの詳細は [PRIVACY.md](PRIVACY.md) を参照してください。
+
 ### Recommended Mitigations *(PRs welcome)*
 
 - Replace static QR codes with TOTP-based one-time codes

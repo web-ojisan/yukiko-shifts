@@ -1,5 +1,7 @@
 // api.js — API クライアント
 
+import { isEncrypted, decryptValue } from './crypto.js';
+
 function authHeaders() {
   const token = localStorage.getItem('shift_token');
   return {
@@ -53,12 +55,35 @@ export function apiDeleteAssign(id) {
 }
 
 // GET /api/workers
+// phone / email が暗号化(enc.v1)されている場合はブラウザ側で復号して返す。
+// 未アンロック時は null に置き換える（暗号文をUIに出さない）。
 export async function apiGetWorkers() {
   try {
-    return await request('/api/workers');
+    const workers = await request('/api/workers');
+    if (!Array.isArray(workers)) return workers;
+    for (const w of workers) {
+      // _phone_plain: サーバに平文のまま保存されている（暗号化移行の対象）
+      w._phone_plain = w.phone != null && !isEncrypted(w.phone);
+      if (isEncrypted(w.phone)) w.phone = await decryptValue(w.phone);
+      if (isEncrypted(w.email)) w.email = await decryptValue(w.email);
+    }
+    return workers;
   } catch {
     return null;
   }
+}
+
+// GET /api/crypto-settings — 連絡先E2E暗号化設定
+export function apiGetCryptoSettings() {
+  return request('/api/crypto-settings');
+}
+
+// POST /api/admin/crypto-settings — 暗号化を有効化（初回のみ）
+export function apiCreateCryptoSettings(data) {
+  return request('/api/admin/crypto-settings', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }
 
 // POST /api/admin/workers

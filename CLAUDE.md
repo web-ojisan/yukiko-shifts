@@ -66,6 +66,18 @@ frontend/static/css/style.css
   (例: `012_xxx.sql`)
 - 新規テーブルには `tenant_id` カラムを忘れない
 
+### 連絡先E2E暗号化
+
+- `users.phone` は管理者ブラウザ内で AES-256-GCM 暗号化されてから保存される
+  (`enc.v1.<iv>.<ct>` 形式)。鍵はテナント管理者のパスフレーズから PBKDF2 で導出し、
+  **サーバは復号鍵を一切持たない**(詳細は `PRIVACY.md`)
+- 実装: `frontend/static/js/crypto.js`(暗号化/復号)、`api.js` の `apiGetWorkers`
+  (取得時に自動復号)、`workers.js`(有効化・アンロックUI)、
+  `internal/handler/crypto_handler.go`(ソルト・検証用暗号文の保存のみ)
+- **サーバ側で phone を復号・解釈するコードを書かない**(できない前提の設計)。
+  phone を使う新機能はブラウザ側で復号する
+- `users.email` は完全に未使用(API・シードとも)。将来の削除候補
+
 ### 機能フラグ
 
 - `ATTENDANCE_ENABLED=true` で出退勤打刻機能が有効化 (ハンドラー登録自体が条件分岐)

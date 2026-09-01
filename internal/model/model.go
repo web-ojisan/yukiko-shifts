@@ -368,3 +368,20 @@ type Tenant struct {
 	CreatedAt     time.Time  `db:"created_at"     json:"created_at"`
 	UpdatedAt     time.Time  `db:"updated_at"     json:"updated_at"`
 }
+
+// ──────────────────────────────────────
+// 連絡先E2E暗号化設定（テナント別）
+// サーバはKDFソルトと検証用暗号文のみ保持し、復号鍵は持たない
+// ──────────────────────────────────────
+type TenantCryptoSettings struct {
+	TenantID  int64     `db:"tenant_id"  json:"tenant_id"`
+	KDFSalt   string    `db:"kdf_salt"   json:"kdf_salt"`
+	Verifier  string    `db:"verifier"   json:"verifier"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
+}
+
+type CreateCryptoSettingsRequest struct {
+	KDFSalt  string `json:"kdf_salt"`
+	Verifier string `json:"verifier"`
+}

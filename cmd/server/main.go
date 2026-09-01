@@ -71,6 +71,7 @@ func main() {
 	lockRepo   := repository.NewLockRepository(db)
 	pushRepo    := repository.NewPushRepository(db)
 	foremanRepo := repository.NewForemanRepository(db)
+	cryptoRepo  := repository.NewCryptoRepository(db)
 	shiftVal    := validator.New(shiftRepo)
 
 	attendanceEnabled := getEnv("ATTENDANCE_ENABLED", "false") == "true"
@@ -85,6 +86,7 @@ func main() {
 	lockH    := handler.NewLockHandler(lockRepo)
 	pushH    := handler.NewPushHandler(pushRepo, userRepo, pushSender)
 	foremanH := handler.NewForemanHandler(foremanRepo, shiftRepo)
+	cryptoH  := handler.NewCryptoHandler(cryptoRepo)
 
 	var attendanceH *handler.AttendanceHandler
 	if attendanceEnabled {
@@ -172,6 +174,10 @@ func main() {
 		r.Get("/api/foreman/assignments",    foremanH.GetAssignments)
 		r.Put("/api/foreman/assignments",    handler.RequireAdmin(foremanH.UpsertAssignment))
 		r.Delete("/api/foreman/assignments", handler.RequireAdmin(foremanH.DeleteAssignment))
+
+		// 連絡先E2E暗号化設定（サーバは復号鍵を持たない）
+		r.Get("/api/crypto-settings",         handler.RequireAdmin(cryptoH.Get))
+		r.Post("/api/admin/crypto-settings",  handler.RequireAdmin(cryptoH.Create))
 
 		// 職長自動提案（ロック時確認用）
 		r.Get("/api/foreman/suggest", handler.RequireAdmin(foremanH.Suggest))

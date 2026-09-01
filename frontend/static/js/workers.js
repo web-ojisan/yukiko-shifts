@@ -1,6 +1,8 @@
 // workers.js — 作業者管理（管理者用）
 
-import { apiGetWorkers, apiCreateWorker, apiUpdateWorker, apiRegenerateQR } from './api.js';
+import { apiGetWorkers, apiCreateWorker, apiUpdateWorker, apiRegenerateQR,
+         apiGetCryptoSettings, apiCreateCryptoSettings } from './api.js';
+import { isUnlocked, unlock, setup, encryptValue } from './crypto.js';
 
 function escHtml(s) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -10,13 +12,83 @@ function escHtml(s) {
 let _workers = [];
 let _editId  = null; // 編集中のworker ID (null = 新規)
 
+// 連絡先E2E暗号化の状態
+let _cryptoSettings = null;  // { enabled, kdf_salt, verifier } | null
+let _cryptoUnlocked = false; // このタブで復号鍵ロード済みか
+
 // ─── Init ────────────────────────────────────────────────────
 export async function initWorkers() {
   const root = document.getElementById('workers-root');
   if (!root) return;
   root.innerHTML = `<div class="wm-loading"><div class="spinner"></div></div>`;
+  _cryptoSettings = await apiGetCryptoSettings().catch(() => null);
+  _cryptoUnlocked = _cryptoSettings?.enabled ? await isUnlocked() : false;
   _workers = await apiGetWorkers().catch(() => []) ?? [];
   render(root);
+}
+
+// ─── 連絡先E2E暗号化 ─────────────────────────────────────────
+function cryptoEnabled() {
+  return _cryptoSettings?.enabled === true;
+}
+
+async function refresh() {
+  _workers = await apiGetWorkers().catch(() => []) ?? [];
+  const root = document.getElementById('workers-root');
+  if (root) render(root);
+}
+
+// 暗号化を有効化（初回のみ）。既存の平文電話番号も暗号化して保存し直す。
+async function enableCrypto() {
+  if (!confirm(
+    '電話番号のE2E暗号化を有効にします。\n\n' +
+    '・連絡先はパスフレーズがないと復号できなくなります\n' +
+    '・パスフレーズを忘れると連絡先は復元できません（再入力が必要）\n' +
+    '・サーバ運営者は連絡先を閲覧できなくなります\n\n続行しますか？')) return;
+  const p1 = prompt('暗号化用パスフレーズを設定してください（8文字以上）');
+  if (!p1) return;
+  if (p1.length < 8) { alert('パスフレーズは8文字以上にしてください'); return; }
+  const p2 = prompt('確認のためもう一度入力してください');
+  if (p1 !== p2) { alert('パスフレーズが一致しません'); return; }
+  try {
+    const s = await setup(p1);
+    await apiCreateCryptoSettings(s);
+    _cryptoSettings = { enabled: true, ...s };
+    _cryptoUnlocked = true;
+    await migratePlaintextPhones();
+    alert('暗号化を有効にしました。パスフレーズは安全な場所に控えてください。');
+    await refresh();
+  } catch (e) {
+    alert('暗号化の有効化に失敗しました: ' + e.message);
+  }
+}
+
+// パスフレーズで復号鍵をロードする。成功時 true。
+async function unlockCrypto() {
+  const p = prompt('連絡先のパスフレーズを入力してください');
+  if (!p) return false;
+  const ok = await unlock(p, _cryptoSettings).catch(() => false);
+  if (!ok) { alert('パスフレーズが違います'); return false; }
+  _cryptoUnlocked = true;
+  await migratePlaintextPhones(); // 平文が残っていれば暗号化し直す
+  await refresh();
+  return true;
+}
+
+// サーバに平文のまま残っている電話番号を暗号化して保存し直す
+async function migratePlaintextPhones() {
+  for (const w of _workers) {
+    if (!w._phone_plain || !w.phone) continue;
+    try {
+      await apiUpdateWorker(w.id, {
+        employee_id: w.employee_id,
+        last_name:   w.last_name  ?? '',
+        first_name:  w.first_name ?? '',
+        phone:       await encryptValue(w.phone),
+        is_foreman_qualified: !!w.is_foreman_qualified,
+      });
+    } catch { /* 個別失敗は次回アンロック時に再試行される */ }
+  }
 }
 
 // ─── Render ─────────────────────────────────────────────────
@@ -39,12 +111,33 @@ function render(root) {
       </tr>`;
   }).join('');
 
+  let cryptoBanner;
+  if (!cryptoEnabled()) {
+    cryptoBanner = `
+      <div class="wm-crypto-banner">
+        ⚠ 電話番号は暗号化されずに保存されています
+        <button class="btn btn-sm" id="wm-crypto-enable-btn">🔐 E2E暗号化を有効にする</button>
+      </div>`;
+  } else if (!_cryptoUnlocked) {
+    cryptoBanner = `
+      <div class="wm-crypto-banner">
+        🔒 電話番号は暗号化されています（表示・編集にはパスフレーズが必要）
+        <button class="btn btn-sm" id="wm-crypto-unlock-btn">復号する</button>
+      </div>`;
+  } else {
+    cryptoBanner = `
+      <div class="wm-crypto-banner wm-crypto-ok">
+        🔓 E2E暗号化: 有効（このタブで復号中。サーバには暗号文のみ保存されます）
+      </div>`;
+  }
+
   root.innerHTML = `
     <div class="wm-page">
       <div class="wm-header">
         <h2 class="wm-title">作業者管理</h2>
         <button class="btn btn-primary" id="wm-add-btn">＋ 追加</button>
       </div>
+      ${cryptoBanner}
       <table class="wm-table">
         <thead>
           <tr>
@@ -61,12 +154,25 @@ function render(root) {
       <div class="wm-modal" id="wm-modal"></div>
     </div>`;
 
-  document.getElementById('wm-add-btn').addEventListener('click', () => openModal(null));
+  document.getElementById('wm-crypto-enable-btn')?.addEventListener('click', enableCrypto);
+  document.getElementById('wm-crypto-unlock-btn')?.addEventListener('click', unlockCrypto);
+
+  // 暗号化有効かつ未復号のまま編集すると、見えない電話番号を null で上書きして
+  // しまうため、編集・追加の前にアンロックを要求する
+  const guardUnlock = async () => {
+    if (cryptoEnabled() && !_cryptoUnlocked) return unlockCrypto();
+    return true;
+  };
+
+  document.getElementById('wm-add-btn').addEventListener('click', async () => {
+    if (await guardUnlock()) openModal(null);
+  });
   document.getElementById('wm-qr-print-btn').addEventListener('click', () => {
     window.open('/static/qr-print.html', '_blank');
   });
   root.querySelectorAll('.wm-edit-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
+      if (!await guardUnlock()) return;
       const w = _workers.find(w => w.id === parseInt(btn.dataset.id, 10));
       if (w) openModal(w);
     });
@@ -184,7 +290,7 @@ async function saveWorker() {
   const empId    = document.getElementById('wm-empid').value.trim();
   const lastName  = document.getElementById('wm-last').value.trim();
   const firstName = document.getElementById('wm-first').value.trim();
-  const phone     = document.getElementById('wm-phone').value.trim() || null;
+  let   phone     = document.getElementById('wm-phone').value.trim() || null;
   const password  = document.getElementById('wm-pw').value;
   const errEl     = document.getElementById('wm-err');
   const saveBtn   = document.getElementById('wm-save-btn');
@@ -203,6 +309,10 @@ async function saveWorker() {
   errEl.style.display = 'none';
 
   try {
+    // E2E暗号化が有効なら電話番号を暗号化して送信（サーバには暗号文のみ渡る）
+    if (phone && cryptoEnabled()) {
+      phone = await encryptValue(phone);
+    }
     const isForemanQualified = document.getElementById('wm-foreman')?.checked ?? false;
     const data = {
       employee_id: empId, last_name: lastName, first_name: firstName,
