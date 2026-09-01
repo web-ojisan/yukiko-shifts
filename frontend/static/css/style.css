@@ -2557,3 +2557,21 @@ button.week-foreman-badge:hover { filter: brightness(1.15); }
   gap: 6px;
   margin-top: 10px;
 }
+
+/* ─── デモ環境バナー ─────────────────────────────────────── */
+.demo-note {
+  margin-top: 10px;
+  font-size: 0.78rem;
+  color: #9a6a00;
+  text-align: center;
+  line-height: 1.6;
+}
+.demo-banner {
+  background: #fff3cd;
+  color: #7a5c00;
+  border-bottom: 1px solid #f0d48a;
+  text-align: center;
+  font-size: 0.8rem;
+  padding: 5px 12px;
+  flex-shrink: 0;
+}

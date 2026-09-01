@@ -75,6 +75,9 @@ async function renderLogin(errMsg = '') {
             <button class="btn btn-demo btn-demo-admin" id="demo-admin-btn">管理者</button>
             <button class="btn btn-demo btn-demo-worker" id="demo-worker-btn">作業者</button>
           </div>
+          <div class="demo-note">
+            デモ環境です。データは定期的にリセットされます。<br>実在の個人情報は入力しないでください。
+          </div>
         </div>` : ''}
       </div>
     </div>`;
@@ -159,6 +162,16 @@ function renderApp() {
            style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0;">
       </div>
     </div>`;
+
+  // デモ環境ではアプリ全体に注意バナーを表示
+  fetchDemoLoginEnabled().then(on => {
+    if (!on || document.getElementById('demo-banner')) return;
+    const banner = document.createElement('div');
+    banner.id = 'demo-banner';
+    banner.className = 'demo-banner';
+    banner.textContent = 'デモ環境 — データは定期的にリセットされます。実在の個人情報は入力しないでください。';
+    document.querySelector('.app-wrapper')?.prepend(banner);
+  });
 
   document.getElementById('logout-btn').addEventListener('click', () => {
     clearPush().catch(() => {}); // サブスクリプション削除（失敗しても無視）
