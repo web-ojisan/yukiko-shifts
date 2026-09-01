@@ -24,7 +24,7 @@ docker compose up --build
 # Goテスト
 go test ./...
 
-# JSテスト (自前の import-free ランナー。フレームワーク不使用)
+# JSテスト (自前ランナー。本体モジュールをimportしてテストする。フレームワーク不使用)
 node frontend/static/js/board.test.js
 node frontend/static/js/sites.test.js
 ```
@@ -44,7 +44,17 @@ internal/
   push/                   Web Push 送信
   storage/                打刻写真の保存 (ローカル or R2)
 db/migrations/            連番SQLファイル (下記ルール参照)
-frontend/static/js/       画面ごとのJS (board.js=シフトボード, worker.js=作業者画面, ...)
+frontend/static/js/
+  app.js                  エントリーポイント・認証・ルーティング
+  api.js                  APIクライアント (apiGetWorkersは電話番号を自動復号)
+  board.js                シフトボード司令塔 (loadBoard/renderAll/イベントバインド)
+  board-state.js          ボードの状態(st)と純粋データ変換 (groupWeek/groupDay)
+  board-views.js          ボードの描画 (HTML生成のみ。バインドはboard.js)
+  board-bulk.js           一括アサインモーダル
+  board-foreman.js        職長ロックモーダル・職長変更ポップオーバー
+  worker.js               作業者画面 / workers.js 作業者管理 / sites.js 現場マスタ
+  util.js (escHtml) / dates.js (日付) / toast.js (showToast) — 共有。重複定義を作らない
+  crypto.js               連絡先E2E暗号化
 frontend/static/css/style.css
 ```
 
@@ -102,8 +112,9 @@ frontend/static/css/style.css
 
 - コメント・コミットメッセージ・UI文言は日本語。コミットは `feat:` `fix:` `docs:` `test:` プレフィックス
 - 日付は `YYYY-MM-DD` 文字列、タイムスロットは `AM` / `PM` / `ALL` の3値
-- JSテストは「ブラウザ/Node両対応・import-free」の自前ランナー形式を踏襲する
-  (Jest 等のフレームワークを導入しない)
+- JSテストは自前ランナー形式を踏襲し(Jest 等を導入しない)、**必ず本体モジュールを
+  importしてテストする**(実装のコピーをテストファイルに書かない)。純粋ロジックは
+  DOM操作と分離してexportし、テスト可能にする(例: sites.js の buildSitePayload)
 - フロントに npm / package.json はない。ライブラリ追加は静的ファイルとして
   `frontend/static/` に置く
 - ルート直下に古い `shift.db` が残っているとログイン不能になる典型トラブルあり

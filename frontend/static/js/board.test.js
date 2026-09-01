@@ -50,7 +50,7 @@ function expect(actual) {
 }
 
 // ─── 本物のコードを import してテストする ─────────────────────
-import { groupWeek, groupDay } from './board.js';
+import { groupWeek, groupDay } from './board-state.js';
 import { fmtDate, parseWorkDate, getWeekDates } from './dates.js';
 import { escHtml } from './util.js';
 
