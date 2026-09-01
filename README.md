@@ -145,7 +145,7 @@ docker build -t shift-app .
 以下のように進めば正常です：
 
 ```
-[1/2] FROM golang:1.22-alpine ...
+[1/2] FROM golang:1.26-alpine ...
 [2/2] RUN go mod download ...
 Successfully built xxxxxxxx
 Successfully tagged shift-app:latest
@@ -288,7 +288,7 @@ docker compose down
 #### VAPID KEYの生成方法
 
 ```bash
-docker run --rm golang:1.22-alpine sh -c \
+docker run --rm golang:1.26-alpine sh -c \
   'go install github.com/SherClockHolmes/webpush-go/cmd/vapid@latest && vapid'
 ```
 

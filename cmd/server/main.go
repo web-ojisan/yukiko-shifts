@@ -35,7 +35,10 @@ const (
 )
 
 func main() {
-	jwtSecret      := getEnv("JWT_SECRET",       "change-me-in-production-32chars!!")
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if len(jwtSecret) < 32 {
+		log.Fatal("JWT_SECRET が未設定か32文字未満です。32文字以上のランダム文字列を設定してください（生成例: openssl rand -base64 32）")
+	}
 	dbPath         := getEnv("DB_PATH",          "./shift.db")
 	port           := getEnv("PORT",             "8989")
 	vapidPublicKey  := getEnv("VAPID_PUBLIC_KEY",  "")
@@ -55,7 +58,7 @@ func main() {
 	// VAPID キーが未設定の場合はヒントをログに出す
 	if vapidPublicKey == "" || vapidPrivateKey == "" {
 		log.Println("⚠ VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY が未設定です。プッシュ通知は無効になります。")
-		log.Println("  キーを生成するには: docker run --rm golang:1.22-alpine sh -c '" +
+		log.Println("  キーを生成するには: docker run --rm golang:1.26-alpine sh -c '" +
 			`go install github.com/SherClockHolmes/webpush-go/cmd/vapid@latest && vapid'`)
 	}
 
@@ -220,8 +223,30 @@ func tenantMiddleware(next http.Handler) http.Handler {
 
 // ── マイグレーション ─────────────────────────────────────────────
 // db/migrations/ 以下の *.sql をファイル名昇順で実行する。
-// ALTER TABLE など冪等でないステートメントは "duplicate column" エラーを無視する。
+// schema_migrations テーブルで適用済みファイルを追跡し、再実行を防ぐ。
 func runMigrations(db *sql.DB) error {
+	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
+		filename   TEXT     PRIMARY KEY,
+		applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`); err != nil {
+		return fmt.Errorf("create schema_migrations: %w", err)
+	}
+
+	// 追跡テーブル導入前に初期化済みの DB への後方互換対応:
+	// attendance_logs が存在すれば 001〜010 は適用済みとみなして登録する。
+	var hasAttendance int
+	db.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='attendance_logs'`).Scan(&hasAttendance)
+	if hasAttendance > 0 {
+		for _, m := range []string{
+			"001_init.sql", "002_add_client_name.sql", "003_add_name_fields.sql",
+			"004_add_push_subscriptions.sql", "005_add_foreman.sql", "006_seed_workers.sql",
+			"007_seed_foreman_assignments.sql", "008_seed_foreman_priorities.sql",
+			"009_add_qr_token.sql", "010_add_attendance.sql",
+		} {
+			db.Exec(`INSERT OR IGNORE INTO schema_migrations (filename) VALUES (?)`, m)
+		}
+	}
+
 	entries, err := os.ReadDir("./db/migrations")
 	if err != nil {
 		return fmt.Errorf("ReadDir migrations: %w", err)
@@ -236,19 +261,26 @@ func runMigrations(db *sql.DB) error {
 	sort.Strings(files)
 
 	for _, name := range files {
+		var count int
+		if err := db.QueryRow(`SELECT COUNT(*) FROM schema_migrations WHERE filename = ?`, name).Scan(&count); err != nil {
+			return fmt.Errorf("check migration %s: %w", name, err)
+		}
+		if count > 0 {
+			log.Printf("migration %s: skipped (already applied)", name)
+			continue
+		}
+
 		data, err := os.ReadFile("./db/migrations/" + name)
 		if err != nil {
 			return fmt.Errorf("ReadFile %s: %w", name, err)
 		}
 		if _, err := db.Exec(string(data)); err != nil {
-			// SQLite の "duplicate column name" は冪等とみなして無視
-			if !strings.Contains(err.Error(), "duplicate column name") {
-				return fmt.Errorf("migration %s: %w", name, err)
-			}
-			log.Printf("migration %s: skipped (already applied)", name)
-		} else {
-			log.Printf("migration %s: applied", name)
+			return fmt.Errorf("migration %s: %w", name, err)
 		}
+		if _, err := db.Exec(`INSERT INTO schema_migrations (filename) VALUES (?)`, name); err != nil {
+			return fmt.Errorf("record migration %s: %w", name, err)
+		}
+		log.Printf("migration %s: applied", name)
 	}
 	return nil
 }
