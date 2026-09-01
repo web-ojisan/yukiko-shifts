@@ -6,8 +6,9 @@
 import { apiGetBoard, apiGetSites, apiCreateAssign, apiDeleteAssign,
          apiGetLockStatus, apiUnlockMonth, apiGetWorkers,
          apiGetForemanAssignments } from './api.js';
+import { escHtml } from './util.js';
 import { showToast } from './toast.js';
-import { fmtDate, parseWorkDate, getWeekDates } from './dates.js';
+import { fmtDate, parseWorkDate, getWeekDates, DOW_JA } from './dates.js';
 import { st, buildMaps, buildWorkerDisplayNames } from './board-state.js';
 import { renderKanban, renderWeekTable, renderToolbar } from './board-views.js';
 import { openBulkModal } from './board-bulk.js';
@@ -147,8 +148,62 @@ function navDate(dir) {
   loadBoard();
 }
 
+// ─── 休み一覧ポップオーバー ──────────────────────────────────
+// 週表示の休み行は人数バッジのみ表示するため、クリックで一覧を出す
+function openUnassignedPopover(dateStr, triggerEl) {
+  document.getElementById('ua-popover')?.remove();
+
+  const assignedIds = new Set(
+    st.assignments.filter(a => parseWorkDate(a.work_date) === dateStr).map(a => a.user_id)
+  );
+  const unassigned = st.workers.filter(w => !assignedIds.has(w.id));
+
+  const chips = unassigned.map(w => {
+    const qual = st.foremanQualSet.has(w.id) ? `<span class="ua-qual-badge">★</span>` : '';
+    return `<span class="ua-chip">${qual}${escHtml(st.workerDispMap[w.id] ?? w.name)}</span>`;
+  }).join('');
+
+  const rect = triggerEl.getBoundingClientRect();
+  const top  = Math.min(rect.bottom + 6, window.innerHeight - 240);
+  const left = Math.min(rect.left, window.innerWidth - 300);
+
+  const [, m, d] = dateStr.split('-');
+  const dow = DOW_JA[new Date(
+    Number(dateStr.slice(0, 4)), Number(m) - 1, Number(d)).getDay()];
+
+  const pop = document.createElement('div');
+  pop.id = 'ua-popover';
+  pop.className = 'ua-popover';
+  pop.style.cssText = `top:${top}px;left:${left}px`;
+  pop.innerHTML = `
+    <div class="fpop-header">
+      <span class="fpop-title">${parseInt(m)}/${parseInt(d)}（${dow}）の休み ${unassigned.length}名</span>
+      <button class="fpop-close">×</button>
+    </div>
+    <div class="ua-pop-chips">${chips}</div>`;
+  document.body.appendChild(pop);
+
+  const close = () => pop.remove();
+  pop.querySelector('.fpop-close').addEventListener('click', close);
+  const onOutside = e => {
+    if (!pop.contains(e.target) && e.target !== triggerEl) {
+      close();
+      document.removeEventListener('mousedown', onOutside);
+    }
+  };
+  setTimeout(() => document.addEventListener('mousedown', onOutside), 0);
+}
+
 // ─── Cell / Card Bind ────────────────────────────────────────
 function bindCells() {
+  // 休み人数バッジ → 一覧ポップオーバー（作業者閲覧モードでも使える）
+  document.querySelectorAll('.ua-count-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      openUnassignedPopover(btn.dataset.date, btn);
+    });
+  });
+
   if (st.readOnly) return; // 作業者閲覧モード: 編集操作をすべてスキップ
 
   // 翌日コピーボタン

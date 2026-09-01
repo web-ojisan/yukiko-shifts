@@ -252,7 +252,8 @@ export function renderToolbar() {
 }
 
 // ─── Unassigned Workers Section ──────────────────────────────
-// 週表示用: アサインのない作業者を1行にまとめて表示
+// 週表示用: アサインのない作業者を1行にまとめて表示。
+// 人数が多くなるため各セルは人数バッジのみ表示し、クリックで一覧ポップオーバーを開く
 function renderUnassignedWeekRow(dates) {
   if (st.workers.length === 0) return '';
 
@@ -266,11 +267,9 @@ function renderUnassignedWeekRow(dates) {
     if (unassigned.length === 0) {
       return `<td class="ua-week-cell"><span class="ua-all-ok">全員</span></td>`;
     }
-    const chips = unassigned.map(w => {
-      const qual = st.foremanQualSet.has(w.id) ? `<span class="ua-qual-badge">★</span>` : '';
-      return `<span class="ua-chip">${qual}${escHtml(st.workerDispMap[w.id] ?? w.name)}</span>`;
-    }).join('');
-    return `<td class="ua-week-cell">${chips}</td>`;
+    return `<td class="ua-week-cell">
+      <button class="ua-count-btn" data-date="${ds}" title="この日の休みを表示">${unassigned.length}名</button>
+    </td>`;
   }).join('');
 
   return `

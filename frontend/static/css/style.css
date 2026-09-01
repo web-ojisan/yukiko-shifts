@@ -2520,3 +2520,40 @@ button.week-foreman-badge:hover { filter: brightness(1.15); }
   border-color: #b5e0bf;
   color: #1d6b34;
 }
+
+/* ─── 休み行: 人数バッジ + ポップオーバー ─────────────────── */
+.ua-count-btn {
+  display: inline-block;
+  padding: 3px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.ua-count-btn:hover {
+  background: #eef2f7;
+  border-color: #94a3b8;
+}
+
+.ua-popover {
+  position: fixed;
+  z-index: 9999;
+  width: 280px;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.15);
+  padding: 12px;
+}
+.ua-pop-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
