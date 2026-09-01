@@ -4,10 +4,7 @@ import { apiGetWorkers, apiCreateWorker, apiUpdateWorker, apiRegenerateQR,
          apiGetCryptoSettings, apiCreateCryptoSettings } from './api.js';
 import { isUnlocked, unlock, setup, encryptValue } from './crypto.js';
 
-function escHtml(s) {
-  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
+import { escHtml } from './util.js';
 
 let _workers = [];
 let _editId  = null; // 編集中のworker ID (null = 新規)

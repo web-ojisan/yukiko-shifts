@@ -2,6 +2,8 @@
 
 import { apiGetSites, apiCreateSite, apiUpdateSite,
          apiGetForemanPriorities, apiSetForemanPriorities, apiGetWorkers } from './api.js';
+import { escHtml } from './util.js';
+import { showToast } from './toast.js';
 
 // ─── State ───────────────────────────────────────────────────
 const st = {
@@ -11,14 +13,6 @@ const st = {
 };
 
 // ─── Utilities ──────────────────────────────────────────────
-export function escHtml(s) {
-  return String(s ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
 export function fmtDate(isoOrDate) {
   if (!isoOrDate) return '';
   const s = String(isoOrDate).substring(0, 10); // YYYY-MM-DD
@@ -436,22 +430,6 @@ async function submitModal(siteId, close) {
     submitBtn.disabled = false;
     submitBtn.textContent = siteId ? '更新する' : '登録する';
   }
-}
-
-// ─── Toast (shared) ───────────────────────────────────────────
-function showToast(message, type = 'success') {
-  let container = document.querySelector('.toast-container');
-  if (!container) {
-    container = document.createElement('div');
-    container.className = 'toast-container';
-    document.body.appendChild(container);
-  }
-  const toast = document.createElement('div');
-  toast.className = `toast toast-${type}`;
-  toast.innerHTML = `<span class="toast-icon">${type === 'success' ? '✓' : '⚠'}</span>
-    <span>${escHtml(message)}</span>`;
-  container.appendChild(toast);
-  setTimeout(() => toast.remove(), 3500);
 }
 
 // ─── Init ─────────────────────────────────────────────────────

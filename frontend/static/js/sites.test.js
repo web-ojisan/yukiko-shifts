@@ -39,7 +39,8 @@ function expect(actual) {
 }
 
 // ─── 本物のコードを import してテストする ─────────────────────
-import { fmtDate, fmtBudget, statusLabel, statusClass, escHtml, buildSitePayload } from './sites.js';
+import { fmtDate, fmtBudget, statusLabel, statusClass, buildSitePayload } from './sites.js';
+import { escHtml } from './util.js';
 
 // ─── fmtDate ──────────────────────────────────────────────────
 console.log('\n── fmtDate ──────────────────────────────────────────────');

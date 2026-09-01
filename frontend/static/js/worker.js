@@ -7,6 +7,8 @@ import {
   apiGetTodayAttendance, apiClockIn, apiClockOut,
 } from './api.js';
 import { HOLIDAYS } from './holidays.js';
+import { escHtml } from './util.js';
+import { showToast } from './toast.js';
 
 // ─── State ───────────────────────────────────────────────────
 const st = {
@@ -43,10 +45,6 @@ function allDaysInMonth(ref) {
   return Array.from({ length: new Date(y, m + 1, 0).getDate() }, (_, i) => new Date(y, m, i + 1));
 }
 
-function escHtml(s) {
-  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
 
 // ─── Load ────────────────────────────────────────────────────
 async function load() {
@@ -567,20 +565,6 @@ function renderRow(root, dateStr) {
 }
 
 // ─── Toast ───────────────────────────────────────────────────
-function showToast(message, type = 'success') {
-  let c = document.querySelector('.toast-container');
-  if (!c) {
-    c = document.createElement('div');
-    c.className = 'toast-container';
-    document.body.appendChild(c);
-  }
-  const t = document.createElement('div');
-  t.className = `toast toast-${type}`;
-  t.innerHTML = `<span class="toast-icon">${type === 'success' ? '✓' : '⚠'}</span>
-    <span>${escHtml(message)}</span>`;
-  c.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
-}
 
 // ─── Foreman Team Report Modal ───────────────────────────────
 async function openForemanTeamModal(dateStr, siteId, siteName) {

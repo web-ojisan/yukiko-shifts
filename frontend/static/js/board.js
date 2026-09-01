@@ -5,6 +5,9 @@ import { apiGetBoard, apiGetSites, apiCreateAssign, apiDeleteAssign,
          apiGetForemanAssignments, apiUpsertForemanAssignment,
          apiDeleteForemanAssignment, apiGetForemanSuggestions } from './api.js';
 import { HOLIDAYS } from './holidays.js';
+import { escHtml } from './util.js';
+import { showToast } from './toast.js';
+import { DOW_JA, fmtDate, parseWorkDate, getWeekDates, fmtMonthDay, fmtDateJa, fmtFull } from './dates.js';
 
 // ─── State ───────────────────────────────────────────────────
 const st = {
@@ -45,44 +48,6 @@ function buildWorkerDisplayNames(workers) {
 
 // DnD 転送中の情報
 let _drag = null; // { assignId, userId, slot, fromSiteId, fromDate }
-
-// ─── Date Utilities ──────────────────────────────────────────
-const DOW_JA = ['日', '月', '火', '水', '木', '金', '土'];
-
-export function fmtDate(d) {
-  const y  = d.getFullYear();
-  const m  = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${dd}`;
-}
-
-export function parseWorkDate(isoStr) {
-  return String(isoStr).substring(0, 10);
-}
-
-export function getWeekDates(ref) {
-  const day  = ref.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  const mon  = new Date(ref);
-  mon.setDate(ref.getDate() + diff);
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(mon);
-    d.setDate(mon.getDate() + i);
-    return d;
-  });
-}
-
-function fmtMonthDay(d) { return `${d.getMonth() + 1}/${d.getDate()}`; }
-function fmtFull(d)     { return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`; }
-
-// ─── Utilities ──────────────────────────────────────────────
-export function escHtml(str) {
-  return String(str ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
 
 // ─── Data Grouping ────────────────────────────────────────────
 function buildMaps(assignments) {
@@ -623,11 +588,6 @@ function bindDrag() {
 let _bulkSlot     = 'AM';
 let _bulkSelected = new Set(); // 選択中の userId
 
-function dateFmt(date) {
-  const [y, m, d] = date.split('-');
-  return `${y}年${parseInt(m)}月${parseInt(d)}日`;
-}
-
 // 指定セルの現在のアサイン一覧を返す
 function cellAssigns(siteId, date) {
   return st.assignments.filter(a =>
@@ -725,7 +685,7 @@ function openBulkModal(siteId, date) {
     <div class="modal bulk-modal" role="dialog" aria-modal="true">
       <div class="modal-header">
         <span class="modal-title">${escHtml(siteName)}</span>
-        <span class="bulk-modal-date">${dateFmt(date)}</span>
+        <span class="bulk-modal-date">${fmtDateJa(date)}</span>
         <button class="modal-close" id="bulk-close">×</button>
       </div>
       <div class="modal-body" id="bulk-body">
@@ -1143,22 +1103,6 @@ function openForemanPopover(siteId, dateStr, triggerEl) {
       saveBtn.textContent = '保存';
     }
   });
-}
-
-// ─── Toast ───────────────────────────────────────────────────
-export function showToast(message, type = 'success') {
-  let container = document.querySelector('.toast-container');
-  if (!container) {
-    container = document.createElement('div');
-    container.className = 'toast-container';
-    document.body.appendChild(container);
-  }
-  const icon  = type === 'success' ? '✓' : '⚠';
-  const toast = document.createElement('div');
-  toast.className = `toast toast-${type}`;
-  toast.innerHTML = `<span class="toast-icon">${icon}</span><span>${escHtml(message)}</span>`;
-  container.appendChild(toast);
-  setTimeout(() => toast.remove(), 3500);
 }
 
 // ─── Unassigned Workers Section ──────────────────────────────

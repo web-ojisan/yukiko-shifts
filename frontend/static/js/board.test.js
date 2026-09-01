@@ -50,7 +50,9 @@ function expect(actual) {
 }
 
 // ─── 本物のコードを import してテストする ─────────────────────
-import { fmtDate, parseWorkDate, getWeekDates, groupWeek, groupDay, escHtml } from './board.js';
+import { groupWeek, groupDay } from './board.js';
+import { fmtDate, parseWorkDate, getWeekDates } from './dates.js';
+import { escHtml } from './util.js';
 
 // ─── Test suites ──────────────────────────────────────────────
 
