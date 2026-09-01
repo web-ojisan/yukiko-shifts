@@ -11,7 +11,7 @@ const st = {
 };
 
 // ─── Utilities ──────────────────────────────────────────────
-function escHtml(s) {
+export function escHtml(s) {
   return String(s ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -376,21 +376,33 @@ function renderForemanSection(sec, siteId, priorities, available) {
   });
 }
 
+// フォーム値からAPIペイロードを組み立てる（純粋ロジック部・テスト対象）
+export function buildSitePayload({ name, client, address, start_date, end_date, budget_yen, note, status }) {
+  const opt = v => (v == null || v === '' ? null : v);
+  return {
+    name:       name ?? '',
+    client:     opt(client),
+    address:    opt(address),
+    start_date: opt(start_date),
+    end_date:   opt(end_date),
+    budget_yen: budget_yen == null || budget_yen === '' ? null : parseInt(budget_yen, 10),
+    note:       opt(note),
+    status:     status || 'active',
+  };
+}
+
 function buildPayload() {
   const val = id => document.getElementById(id)?.value.trim() ?? '';
-  const opt = id => { const v = val(id); return v === '' ? null : v; };
-
-  const budget = val('sm-budget');
-  return {
+  return buildSitePayload({
     name:       val('sm-name'),
-    client:     opt('sm-client'),
-    address:    opt('sm-address'),
-    start_date: opt('sm-start'),
-    end_date:   opt('sm-end'),
-    budget_yen: budget === '' ? null : parseInt(budget, 10),
-    note:       opt('sm-note'),
-    status:     val('sm-status') || 'active',
-  };
+    client:     val('sm-client'),
+    address:    val('sm-address'),
+    start_date: val('sm-start'),
+    end_date:   val('sm-end'),
+    budget_yen: val('sm-budget'),
+    note:       val('sm-note'),
+    status:     val('sm-status'),
+  });
 }
 
 async function submitModal(siteId, close) {

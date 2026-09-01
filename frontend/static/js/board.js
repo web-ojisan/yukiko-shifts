@@ -76,7 +76,7 @@ function fmtMonthDay(d) { return `${d.getMonth() + 1}/${d.getDate()}`; }
 function fmtFull(d)     { return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`; }
 
 // ─── Utilities ──────────────────────────────────────────────
-function escHtml(str) {
+export function escHtml(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

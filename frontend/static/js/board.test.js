@@ -1,5 +1,5 @@
 /**
- * board.test.js — board.js のユニットテスト (vanilla, import-free)
+ * board.test.js — board.js のユニットテスト（本物のコードをimportしてテストする）
  *
  * ブラウザ / Node.js 両対応の簡易テストランナー。
  * Node.js で実行:  node frontend/static/js/board.test.js
@@ -49,64 +49,8 @@ function expect(actual) {
   };
 }
 
-// ─── Inline copies of pure functions from board.js ────────────
-// (These are the functions we want to unit-test; they have no side-effects)
-
-const DOW_JA = ['日', '月', '火', '水', '木', '金', '土'];
-
-function fmtDate(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${dd}`;
-}
-
-function parseWorkDate(isoStr) {
-  return String(isoStr).substring(0, 10);
-}
-
-function getWeekDates(ref) {
-  const day = ref.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  const mon = new Date(ref);
-  mon.setDate(ref.getDate() + diff);
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(mon);
-    d.setDate(mon.getDate() + i);
-    return d;
-  });
-}
-
-function groupWeek(assignments) {
-  const g = {};
-  for (const a of assignments) {
-    const sid = String(a.site_id);
-    const date = parseWorkDate(a.work_date);
-    if (!g[sid]) g[sid] = { name: a.site_name ?? `現場#${sid}`, days: {} };
-    if (!g[sid].days[date]) g[sid].days[date] = [];
-    g[sid].days[date].push(a);
-  }
-  return g;
-}
-
-function groupDay(assignments, dateStr) {
-  const g = {};
-  for (const a of assignments) {
-    if (parseWorkDate(a.work_date) !== dateStr) continue;
-    const sid = String(a.site_id);
-    if (!g[sid]) g[sid] = { name: a.site_name ?? `現場#${sid}`, cards: [] };
-    g[sid].cards.push(a);
-  }
-  return g;
-}
-
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+// ─── 本物のコードを import してテストする ─────────────────────
+import { fmtDate, parseWorkDate, getWeekDates, groupWeek, groupDay, escHtml } from './board.js';
 
 // ─── Test suites ──────────────────────────────────────────────
 

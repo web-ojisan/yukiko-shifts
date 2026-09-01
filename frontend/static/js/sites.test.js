@@ -38,36 +38,8 @@ function expect(actual) {
   };
 }
 
-// ─── Inline copies of pure functions from sites.js ────────────
-
-function fmtDate(isoOrDate) {
-  if (!isoOrDate) return '';
-  const s = String(isoOrDate).substring(0, 10);
-  if (!s || s === 'null') return '';
-  const [y, m, d] = s.split('-');
-  return `${y}/${parseInt(m)}/${parseInt(d)}`;
-}
-
-function fmtBudget(yen) {
-  if (yen == null) return '';
-  return Number(yen).toLocaleString('ja-JP') + '円';
-}
-
-function statusLabel(status) {
-  return { active: '稼働中', completed: '完了', deleted: '削除' }[status] ?? status;
-}
-
-function statusClass(status) {
-  return { active: 'badge-status-active', completed: 'badge-status-done' }[status] ?? '';
-}
-
-function escHtml(s) {
-  return String(s ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+// ─── 本物のコードを import してテストする ─────────────────────
+import { fmtDate, fmtBudget, statusLabel, statusClass, escHtml, buildSitePayload } from './sites.js';
 
 // ─── fmtDate ──────────────────────────────────────────────────
 console.log('\n── fmtDate ──────────────────────────────────────────────');
@@ -161,20 +133,8 @@ test('日本語テキストはそのまま', () => {
 // ─── buildPayload ロジック（フォームなし版）────────────────────
 console.log('\n── buildPayload（ロジック）────────────────────────────────');
 
-// buildPayload と同様のロジックを関数化してテスト
-function buildPayloadLogic({ name, client, address, start_date, end_date, budget_yen, note, status }) {
-  const opt = v => (v === '' || v == null) ? null : v;
-  return {
-    name:       name ?? '',
-    client:     opt(client),
-    address:    opt(address),
-    start_date: opt(start_date),
-    end_date:   opt(end_date),
-    budget_yen: (budget_yen === '' || budget_yen == null) ? null : parseInt(budget_yen, 10),
-    note:       opt(note),
-    status:     status || 'active',
-  };
-}
+// sites.js の buildSitePayload（本物）をテストする
+const buildPayloadLogic = buildSitePayload;
 
 test('空の optional フィールドは null になる', () => {
   const p = buildPayloadLogic({ name: 'テスト', client: '', address: '', status: 'active' });
