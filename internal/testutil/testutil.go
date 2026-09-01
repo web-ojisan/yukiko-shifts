@@ -5,17 +5,19 @@ import (
 	"testing"
 
 	"github.com/jmoiron/sqlx"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite" // Pure Go SQLiteドライバ（CGO不要）
 )
 
 // NewDB は in-memory SQLite DB を作成し、プッシュ通知テストに必要なテーブルを作る。
 // t.Cleanup で自動クローズする。
 func NewDB(t *testing.T) *sqlx.DB {
 	t.Helper()
-	db, err := sqlx.Open("sqlite3", ":memory:?_foreign_keys=on")
+	db, err := sqlx.Open("sqlite", ":memory:?_pragma=foreign_keys(1)")
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
+	// :memory: は接続ごとに別DBになるため、単一接続に固定する
+	db.SetMaxOpenConns(1)
 	t.Cleanup(func() { db.Close() })
 
 	_, err = db.Exec(`

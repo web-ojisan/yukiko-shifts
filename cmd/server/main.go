@@ -16,7 +16,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/jmoiron/sqlx"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite" // Pure Go SQLiteドライバ（CGO不要）
 
 	"github.com/yourorg/shift-app/internal/handler"
 	"github.com/yourorg/shift-app/internal/model"
@@ -45,7 +45,8 @@ func main() {
 	vapidPublicKey  := getEnv("VAPID_PUBLIC_KEY",  "")
 	vapidPrivateKey := getEnv("VAPID_PRIVATE_KEY", "")
 
-	db, err := sqlx.Open("sqlite3", dbPath+"?_foreign_keys=on&_journal_mode=WAL")
+	db, err := sqlx.Open("sqlite",
+		dbPath+"?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)")
 	if err != nil {
 		log.Fatalf("DB open: %v", err)
 	}

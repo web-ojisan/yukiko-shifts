@@ -7,7 +7,7 @@ DB移行などの大掛かりなスタック変更は行わない**。改善は�
 ## 技術スタック
 
 - **バックエンド**: Go + chi (ルーティング) + sqlx + go-chi/jwtauth (JWT HS256)
-- **DB**: SQLite (`mattn/go-sqlite3`, CGO必須) — WAL モード、`SetMaxOpenConns(1)` で書き込み直列化
+- **DB**: SQLite (`modernc.org/sqlite`, Pure Go・CGO不要) — WAL モード、`SetMaxOpenConns(1)` で書き込み直列化。ドライバ名は `"sqlite"`、PRAGMAは DSN の `_pragma=name(value)` 形式で指定
 - **フロント**: Vanilla JS SPA (ビルドステップなし)。`frontend/templates/index.html` が唯一のHTML、画面はJSで切り替え
 - **通知**: Web Push (`webpush-go`) — VAPID キー未設定なら no-op
 - **デプロイ**: Docker 単一コンテナ (compose.yaml / docker-compose.prod.yml / fly.toml)
