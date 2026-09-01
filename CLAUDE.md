@@ -76,11 +76,13 @@ frontend/static/css/style.css
   `internal/handler/crypto_handler.go`(ソルト・検証用暗号文の保存のみ)
 - **サーバ側で phone を復号・解釈するコードを書かない**(できない前提の設計)。
   phone を使う新機能はブラウザ側で復号する
-- `users.email` は完全に未使用(API・シードとも)。将来の削除候補
+- `users.email` カラムは未使用だったため削除済み(013)。メールアドレスは保持しない
 
 ### 機能フラグ
 
 - `ATTENDANCE_ENABLED=true` で出退勤打刻機能が有効化 (ハンドラー登録自体が条件分岐)
+- `DEMO_LOGIN=true` でログイン画面のデモ用クイックログインボタンが表示される
+  (フロントは `GET /api/config` で取得。本番では設定しない)
 - VAPID キー未設定なら Push 送信・日次リマインダーは無効 (エラーにはしない)
 
 ## 環境変数
@@ -93,6 +95,7 @@ frontend/static/css/style.css
 | `TZ` | - | `Asia/Tokyo` 前提のロジックあり (日次リマインダー等) |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | 任意 | Web Push 用 |
 | `ATTENDANCE_ENABLED` | 任意 | `true` で打刻機能有効 |
+| `DEMO_LOGIN` | 任意 | `true` でデモ用クイックログイン表示(本番では設定しない) |
 | `DATA_DIR` | 任意 | 打刻写真の保存先 (デフォルト `./data`) |
 
 ## 規約・注意点

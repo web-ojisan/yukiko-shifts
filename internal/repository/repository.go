@@ -349,9 +349,9 @@ func (r *UserRepository) Create(ctx context.Context, u model.User) (int64, error
 	}
 	const q = `
 		INSERT INTO users
-			(tenant_id, employee_id, email, password_hash, name, last_name, first_name, role, phone, status, qr_token)
+			(tenant_id, employee_id, password_hash, name, last_name, first_name, role, phone, status, qr_token)
 		VALUES
-			(:tenant_id, :employee_id, :email, :password_hash, :name, :last_name, :first_name, :role, :phone, :status, :qr_token)`
+			(:tenant_id, :employee_id, :password_hash, :name, :last_name, :first_name, :role, :phone, :status, :qr_token)`
 	res, err := r.db.NamedExecContext(ctx, q, u)
 	if err != nil {
 		return 0, err

@@ -8,4 +8,5 @@ services:
     environment:
       JWT_SECRET: "local-dev-secret-32chars-minimum!!"
       TZ: Asia/Tokyo
+      DEMO_LOGIN: "true"  # 開発用。本番では設定しない
     restart: unless-stopped

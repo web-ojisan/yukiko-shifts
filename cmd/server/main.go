@@ -75,6 +75,10 @@ func main() {
 	shiftVal    := validator.New(shiftRepo)
 
 	attendanceEnabled := getEnv("ATTENDANCE_ENABLED", "false") == "true"
+	demoLoginEnabled  := getEnv("DEMO_LOGIN", "false") == "true"
+	if demoLoginEnabled {
+		log.Println("⚠ デモ用クイックログイン: 有効 (本番では DEMO_LOGIN を設定しないでください)")
+	}
 
 	// プッシュ送信者（キー未設定なら nil → 全送信がno-op）
 	pushSender := push.NewSender(vapidPrivateKey, vapidPublicKey)
@@ -105,7 +109,6 @@ func main() {
 	r.Use(requestLogger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(30 * time.Second))
-	r.Use(corsMiddleware)
 
 	// 静的ファイル
 	r.Handle("/static/*", http.StripPrefix("/static/",
@@ -121,6 +124,12 @@ func main() {
 	// 認証不要
 	r.Post("/api/auth/login", authH.Login)
 	r.Get("/qr-login", authH.QRLogin) // QRコードスキャンによるログイン
+
+	// フロント向け公開設定（ログイン画面が参照するため認証不要）
+	r.Get("/api/config", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"demo_login":%t}`, demoLoginEnabled)
+	})
 
 	// 認証必要 + テナント自動注入
 	r.Group(func(r chi.Router) {
@@ -281,13 +290,24 @@ func runMigrations(db *sql.DB) error {
 		if err != nil {
 			return fmt.Errorf("ReadFile %s: %w", name, err)
 		}
+		applied := true
 		if _, err := db.Exec(string(data)); err != nil {
-			return fmt.Errorf("migration %s: %w", name, err)
+			// 001_init.sql(v2スキーマ)が後続ALTER TABLEの内容を既に含むため、
+			// フレッシュDBでは 003 等が duplicate column で失敗する。
+			// このケースは適用済み相当とみなして記録のみ行う。
+			if !strings.Contains(err.Error(), "duplicate column name") {
+				return fmt.Errorf("migration %s: %w", name, err)
+			}
+			applied = false
 		}
 		if _, err := db.Exec(`INSERT INTO schema_migrations (filename) VALUES (?)`, name); err != nil {
 			return fmt.Errorf("record migration %s: %w", name, err)
 		}
-		log.Printf("migration %s: applied", name)
+		if applied {
+			log.Printf("migration %s: applied", name)
+		} else {
+			log.Printf("migration %s: recorded (duplicate column — 001に含まれる)", name)
+		}
 	}
 	return nil
 }
@@ -311,20 +331,6 @@ func maskURI(u *url.URL) string {
 		return u.Path + "?token=***"
 	}
 	return u.RequestURI()
-}
-
-// ── CORS ─────────────────────────────────────────────────────────
-func corsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
 }
 
 func getEnv(key, fallback string) string {

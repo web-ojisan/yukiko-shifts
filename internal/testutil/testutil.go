@@ -35,7 +35,6 @@ func NewDB(t *testing.T) *sqlx.DB {
 			id                   INTEGER PRIMARY KEY AUTOINCREMENT,
 			tenant_id            INTEGER NOT NULL REFERENCES tenants(id),
 			employee_id          TEXT    NOT NULL,
-			email                TEXT,
 			password_hash        TEXT    NOT NULL DEFAULT '',
 			name                 TEXT    NOT NULL,
 			last_name            TEXT,

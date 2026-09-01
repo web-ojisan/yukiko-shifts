@@ -31,7 +31,23 @@ function navigate(page) {
 }
 
 // ─── Login Page ──────────────────────────────────────────────
-function renderLogin(errMsg = '') {
+
+// デモ用クイックログインの有効状態（サーバの DEMO_LOGIN 環境変数で制御）
+let _demoLogin = null; // null = 未取得
+async function fetchDemoLoginEnabled() {
+  if (_demoLogin === null) {
+    try {
+      const res = await fetch('/api/config');
+      _demoLogin = (await res.json()).demo_login === true;
+    } catch {
+      _demoLogin = false;
+    }
+  }
+  return _demoLogin;
+}
+
+async function renderLogin(errMsg = '') {
+  const demoLogin = await fetchDemoLoginEnabled();
   const app = document.getElementById('app');
   app.innerHTML = `
     <div class="login-wrapper">
@@ -52,13 +68,14 @@ function renderLogin(errMsg = '') {
             placeholder="パスワードを入力" autocomplete="current-password">
         </div>
         <button class="btn btn-primary" id="login-btn">ログイン</button>
+        ${demoLogin ? `
         <div class="demo-section">
           <div class="demo-divider"><span>デモ用クイックログイン</span></div>
           <div class="demo-btns">
             <button class="btn btn-demo btn-demo-admin" id="demo-admin-btn">管理者</button>
             <button class="btn btn-demo btn-demo-worker" id="demo-worker-btn">作業者</button>
           </div>
-        </div>
+        </div>` : ''}
       </div>
     </div>`;
 
@@ -100,8 +117,8 @@ function renderLogin(errMsg = '') {
 
   btnEl.addEventListener('click', doLogin);
   pwEl.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
-  document.getElementById('demo-admin-btn').addEventListener('click', () => doQuickLogin('admin', 'admin1234'));
-  document.getElementById('demo-worker-btn').addEventListener('click', () => doQuickLogin('w001', 'worker1234'));
+  document.getElementById('demo-admin-btn')?.addEventListener('click', () => doQuickLogin('admin', 'admin1234'));
+  document.getElementById('demo-worker-btn')?.addEventListener('click', () => doQuickLogin('w001', 'worker1234'));
   idEl.focus();
 }
 

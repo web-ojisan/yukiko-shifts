@@ -90,7 +90,7 @@ openssl rand -base64 32
 
 ```bash
 # Clone して 必要なENV設定終わったら以下のコマンドで起動
-mkdir -p data && rm -f shift.db shift.db-shm shift.db-wal && docker build -t shift-app . && docker rm -f shift-app 2>/dev/null; docker run --name shift-app -p 8989:8989 -v "$(pwd)/data:/app/data" -e JWT_SECRET="local-dev-secret-32chars-minimum!!" -e TZ=Asia/Tokyo shift-app
+mkdir -p data && rm -f shift.db shift.db-shm shift.db-wal && docker build -t shift-app . && docker rm -f shift-app 2>/dev/null; docker run --name shift-app -p 8989:8989 -v "$(pwd)/data:/app/data" -e JWT_SECRET="local-dev-secret-32chars-minimum!!" -e TZ=Asia/Tokyo -e DEMO_LOGIN=true shift-app
 ```
 
 起動したら `http://localhost:8989` を開いてログイン：
@@ -289,6 +289,8 @@ docker compose down
 | `TZ` | `Asia/Tokyo` | タイムゾーン |
 | `VAPID_PUBLIC_KEY` | （任意） | プッシュ通知用公開鍵 |
 | `VAPID_PRIVATE_KEY` | （任意） | プッシュ通知用秘密鍵 |
+| `ATTENDANCE_ENABLED` | `false` | `true` で出退勤打刻機能を有効化 |
+| `DEMO_LOGIN` | `false` | `true` でログイン画面にデモ用クイックログインを表示（**本番では設定しない**） |
 
 #### VAPID KEYの生成方法
 
@@ -310,10 +312,19 @@ docker run --rm golang:1.26-alpine sh -c \
 
 ---
 
-## 実装フェーズ
+## 実装状況
 
-- [x] Phase 1: DB設計・認証・モデル・バリデーション
-- [ ] Phase 2: 現場・作業者マスタハンドラー実装
-- [ ] Phase 3: フロントエンド（Vanilla JS）実装
-- [ ] Phase 4: 月次CSV/Excel出力
-- [ ] Phase 5: 通知・パスワードリセット
+### 実装済み
+- DB設計・JWT認証・二重アサインバリデーション
+- 現場・作業者マスタ（管理画面）
+- シフトボード（週/日表示・D&D・一括アサイン・ロック）
+- 職長アサイン・優先順位・自動提案・チーム日報一括入力
+- 日報・月報（提出確定・管理者サマリ）
+- QRコードログイン（個別/一括印刷・トークン再発行）
+- Webプッシュ通知（希望提出・毎日19時の翌日シフトリマインド）
+- 出退勤打刻（`ATTENDANCE_ENABLED=true`・写真つき）
+- 電話番号E2E暗号化（詳細は [PRIVACY.md](PRIVACY.md)）
+
+### 未実装
+- 月次CSV/Excel出力
+- パスワードリセット

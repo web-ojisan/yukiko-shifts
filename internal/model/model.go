@@ -47,7 +47,6 @@ type User struct {
 	ID                  int64     `db:"id"                    json:"id"`
 	TenantID            int64     `db:"tenant_id"             json:"tenant_id"`
 	EmployeeID          string    `db:"employee_id"           json:"employee_id"`
-	Email               *string   `db:"email"                 json:"email,omitempty"`
 	PasswordHash        string    `db:"password_hash"         json:"-"`
 	Name                string    `db:"name"                  json:"name"`
 	LastName            *string   `db:"last_name"             json:"last_name,omitempty"`

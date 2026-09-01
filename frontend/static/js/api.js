@@ -55,7 +55,7 @@ export function apiDeleteAssign(id) {
 }
 
 // GET /api/workers
-// phone / email が暗号化(enc.v1)されている場合はブラウザ側で復号して返す。
+// phone が暗号化(enc.v1)されている場合はブラウザ側で復号して返す。
 // 未アンロック時は null に置き換える（暗号文をUIに出さない）。
 export async function apiGetWorkers() {
   try {
@@ -65,7 +65,6 @@ export async function apiGetWorkers() {
       // _phone_plain: サーバに平文のまま保存されている（暗号化移行の対象）
       w._phone_plain = w.phone != null && !isEncrypted(w.phone);
       if (isEncrypted(w.phone)) w.phone = await decryptValue(w.phone);
-      if (isEncrypted(w.email)) w.email = await decryptValue(w.email);
     }
     return workers;
   } catch {
