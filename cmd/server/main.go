@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"sort"
 	"strings"
@@ -99,7 +100,7 @@ func main() {
 	go startDailyReminder(db, pushRepo, pushSender)
 
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
+	r.Use(requestLogger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(30 * time.Second))
 	r.Use(corsMiddleware)
@@ -283,6 +284,27 @@ func runMigrations(db *sql.DB) error {
 		log.Printf("migration %s: applied", name)
 	}
 	return nil
+}
+
+// ── リクエストログ ───────────────────────────────────────────────
+// chi の middleware.Logger の代替。/qr-login のクエリにはQRトークン(認証情報)が
+// 含まれるため、アクセスログに残らないようマスクする。
+func requestLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+		start := time.Now()
+		next.ServeHTTP(ww, r)
+		log.Printf("%s %s %d %dB %s from %s",
+			r.Method, maskURI(r.URL), ww.Status(), ww.BytesWritten(), time.Since(start), r.RemoteAddr)
+	})
+}
+
+// maskURI はログ出力用のリクエストURIを返す。/qr-login のクエリはマスクする。
+func maskURI(u *url.URL) string {
+	if u.Path == "/qr-login" && u.RawQuery != "" {
+		return u.Path + "?token=***"
+	}
+	return u.RequestURI()
 }
 
 // ── CORS ─────────────────────────────────────────────────────────
