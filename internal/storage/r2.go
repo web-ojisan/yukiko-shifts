@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -34,7 +35,8 @@ func (s *r2Storage) Upload(ctx context.Context, key string, data []byte) (string
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("Content-Type", "image/jpeg")
+	contentType := contentTypeFor(key)
+	req.Header.Set("Content-Type", contentType)
 	req.Header.Set("x-amz-content-sha256", payloadHash)
 	req.Header.Set("x-amz-date", amzDate)
 
@@ -43,8 +45,8 @@ func (s *r2Storage) Upload(ctx context.Context, key string, data []byte) (string
 	service := "s3"
 
 	canonicalHeaders := fmt.Sprintf(
-		"content-type:image/jpeg\nhost:%s.r2.cloudflarestorage.com\nx-amz-content-sha256:%s\nx-amz-date:%s\n",
-		s.accountID, payloadHash, amzDate,
+		"content-type:%s\nhost:%s.r2.cloudflarestorage.com\nx-amz-content-sha256:%s\nx-amz-date:%s\n",
+		contentType, s.accountID, payloadHash, amzDate,
 	)
 	signedHeaders := "content-type;host;x-amz-content-sha256;x-amz-date"
 
@@ -98,4 +100,16 @@ func deriveSigningKey(secret, date, region, service string) []byte {
 	kRegion  := hmacSHA256(kDate, region)
 	kService := hmacSHA256(kRegion, service)
 	return hmacSHA256(kService, "aws4_request")
+}
+
+// contentTypeFor はキーの拡張子からContent-Typeを決める
+func contentTypeFor(key string) string {
+	switch {
+	case strings.HasSuffix(key, ".gz"):
+		return "application/gzip"
+	case strings.HasSuffix(key, ".db"):
+		return "application/octet-stream"
+	default:
+		return "image/jpeg"
+	}
 }

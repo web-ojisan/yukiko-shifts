@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite" // Pure Go SQLiteドライバ（CGO不要）
 
+	"github.com/yourorg/shift-app/internal/backup"
 	"github.com/yourorg/shift-app/internal/billing"
 	"github.com/yourorg/shift-app/internal/handler"
 	"github.com/yourorg/shift-app/internal/model"
@@ -124,6 +126,18 @@ func main() {
 
 	// 毎日 19:00 JST に翌日シフトのリマインドを送信
 	go startDailyReminder(db, pushRepo, pushSender)
+
+	// 毎日 03:00 JST にDBバックアップ（BACKUP_ENABLED=false で無効化）
+	if getEnv("BACKUP_ENABLED", "true") == "true" {
+		backupDir := getEnv("BACKUP_DIR", getEnv("DATA_DIR", "./data")+"/backups")
+		keepDays, _ := strconv.Atoi(getEnv("BACKUP_KEEP_DAYS", "14"))
+		if keepDays <= 0 {
+			keepDays = 14
+		}
+		go startDailyBackup(db, backupDir, keepDays)
+	} else {
+		log.Println("backup: 無効 (BACKUP_ENABLED=false)")
+	}
 
 	r := chi.NewRouter()
 	r.Use(requestLogger)
@@ -386,6 +400,47 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// ── 毎日 03:00 JST のDBバックアップ ──────────────────────────────
+// VACUUM INTO によるスナップショット → gzip → ローテーション。
+// R2 (R2_ACCOUNT_ID等) が設定されていればオフサイトにもアップロードする。
+func startDailyBackup(db *sqlx.DB, backupDir string, keepDays int) {
+	up := storage.NewR2IfConfigured()
+	if up != nil {
+		log.Println("backup: オフサイト転送 (R2): 有効")
+	} else {
+		log.Println("backup: オフサイト転送 (R2): 無効 (ローカル保存のみ)")
+	}
+	jst, err := time.LoadLocation("Asia/Tokyo")
+	if err != nil {
+		jst = time.FixedZone("JST", 9*60*60)
+	}
+	for {
+		now := time.Now().In(jst)
+		next := time.Date(now.Year(), now.Month(), now.Day(), 3, 0, 0, 0, jst)
+		if !now.Before(next) {
+			next = next.Add(24 * time.Hour)
+		}
+		log.Printf("backup: 次回 %s (保持 %d日, 保存先 %s)", next.Format("2006-01-02 15:04 MST"), keepDays, backupDir)
+		time.Sleep(time.Until(next))
+		runBackupOnce(db, backupDir, keepDays, up)
+	}
+}
+
+func runBackupOnce(db *sqlx.DB, backupDir string, keepDays int, up backup.Uploader) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	path, err := backup.Run(ctx, db, backupDir, keepDays, up)
+	if err != nil {
+		if path != "" {
+			log.Printf("backup: %s は作成済みだが後処理に失敗: %v", path, err)
+		} else {
+			log.Printf("backup: 失敗: %v", err)
+		}
+		return
+	}
+	log.Printf("backup: 作成 %s", path)
 }
 
 // ── 毎日 19:00 JST の翌日シフトリマインド ─────────────────────────

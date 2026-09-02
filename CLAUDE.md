@@ -132,6 +132,7 @@ frontend/static/css/style.css
 | `STRIPE_WEBHOOK_SECRET` | 任意 | Webhook署名シークレット(`whsec_...`) |
 | `STRIPE_PRICE_ENTRY` / `STRIPE_PRICE_BASIC` / `STRIPE_PRICE_PRO` | 任意 | 各プランのStripe Price ID(5変数全て設定で課金有効) |
 | `DATA_DIR` | 任意 | 打刻写真の保存先 (デフォルト `./data`) |
+| `BACKUP_ENABLED` / `BACKUP_DIR` / `BACKUP_KEEP_DAYS` | 任意 | 日次DBバックアップ(デフォルト有効・03:00 JST・14日保持)。R2設定があればオフサイトにも転送 |
 
 ## 規約・注意点
 

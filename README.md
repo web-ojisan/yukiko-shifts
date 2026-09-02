@@ -292,7 +292,33 @@ docker compose down
 | `ATTENDANCE_ENABLED` | `false` | `true` で出退勤打刻機能を有効化 |
 | `DEMO_LOGIN` | `false` | `true` でログイン画面にデモ用クイックログインを表示（**本番では設定しない**） |
 | `BASE_URL` | `http://localhost:<PORT>` | 公開URL（Stripe Checkoutのリダイレクト先） |
+| `BACKUP_ENABLED` | `true` | `false` で日次DBバックアップを無効化 |
+| `BACKUP_DIR` | `<DATA_DIR>/backups` | バックアップ保存先 |
+| `BACKUP_KEEP_DAYS` | `14` | バックアップの保持日数 |
 | `STRIPE_SECRET_KEY` 他 | （任意） | セルフサーブ課金用。下記「オンライン申込の設定」参照 |
+
+---
+
+## データベースの定期バックアップ
+
+デフォルトで有効です。毎日 03:00 (JST) に稼働中のDBから安全にスナップショットを取得し
+（SQLiteの `VACUUM INTO`）、gzip圧縮して `<DATA_DIR>/backups/` に保存します。
+14日より古いバックアップは自動削除されます。
+
+**オフサイト保存（推奨）**: Cloudflare R2 の環境変数
+（`R2_ACCOUNT_ID` / `R2_ACCESS_KEY` / `R2_SECRET_KEY` / `R2_BUCKET`）が設定されていれば、
+バックアップは R2 の `backups/` 配下にも自動アップロードされます。
+サーバーのディスク故障・ホスト消失に備えるため、本番では設定を推奨します。
+
+### リストア手順
+
+```bash
+# 1. アプリを停止する
+# 2. バックアップを解凍して DB_PATH に配置（-wal/-shm が残っていれば削除）
+gunzip -c data/backups/backup-20260902-030000.db.gz > data/shift.db
+rm -f data/shift.db-wal data/shift.db-shm
+# 3. アプリを起動する（マイグレーションは適用済み記録に従い自動スキップされる）
+```
 
 ---
 

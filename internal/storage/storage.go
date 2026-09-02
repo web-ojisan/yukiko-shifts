@@ -37,3 +37,23 @@ func New(dataDir string) PhotoStorage {
 	}
 	return &localStorage{dir: photoDir}
 }
+
+// NewR2IfConfigured はR2の設定が揃っている場合のみR2ストレージを返す。
+// 未設定なら nil（バックアップのオフサイト転送などの任意用途向け）。
+func NewR2IfConfigured() PhotoStorage {
+	accountID := os.Getenv("R2_ACCOUNT_ID")
+	accessKey := os.Getenv("R2_ACCESS_KEY")
+	secretKey := os.Getenv("R2_SECRET_KEY")
+	bucket    := os.Getenv("R2_BUCKET")
+
+	if accountID == "" || accessKey == "" || secretKey == "" || bucket == "" {
+		return nil
+	}
+	return &r2Storage{
+		accountID: accountID,
+		accessKey: accessKey,
+		secretKey: secretKey,
+		bucket:    bucket,
+		publicURL: os.Getenv("R2_PUBLIC_URL"),
+	}
+}
