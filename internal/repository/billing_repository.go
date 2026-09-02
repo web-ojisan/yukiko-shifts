@@ -121,3 +121,25 @@ func (r *BillingRepository) ConsumeProvisionPassword(ctx context.Context, sessio
 		`UPDATE signup_provisions SET initial_password = NULL WHERE checkout_session_id = ?`, sessionID)
 	return err
 }
+
+// GetTenantPlanAndMax はテナントのプランと上限人数を返す
+func (r *BillingRepository) GetTenantPlanAndMax(ctx context.Context, tenantID int64) (string, int, error) {
+	var row struct {
+		Plan       string `db:"plan"`
+		MaxWorkers int    `db:"max_workers"`
+	}
+	err := r.db.GetContext(ctx, &row,
+		`SELECT plan, max_workers FROM tenants WHERE id = ?`, tenantID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", 0, nil
+	}
+	return row.Plan, row.MaxWorkers, err
+}
+
+// UpdatePlanBySubscription はStripeポータルでのプラン変更をテナントに反映する
+func (r *BillingRepository) UpdatePlanBySubscription(ctx context.Context, subscriptionID, plan string, maxWorkers int) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE tenants SET plan = ?, max_workers = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE stripe_subscription_id = ?`, plan, maxWorkers, subscriptionID)
+	return err
+}

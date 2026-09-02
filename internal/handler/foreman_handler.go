@@ -134,7 +134,7 @@ func (h *ForemanHandler) Suggest(w http.ResponseWriter, r *http.Request) {
 	to := lastDay.Format("2006-01-02")
 
 	// 月内のシフトアサイン一覧を取得（現場×日の組み合わせを抽出）
-	assignments, err := h.shiftRepo.FindAssignmentsByDateRange(r.Context(), firstDay, lastDay)
+	assignments, err := h.shiftRepo.FindAssignmentsByDateRange(r.Context(), tenantID, firstDay, lastDay)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "データ取得エラー")
 		return

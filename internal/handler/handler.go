@@ -170,6 +170,7 @@ type ShiftHandler struct {
 	shiftRepo   *repository.ShiftRepository
 	userRepo    *repository.UserRepository
 	foremanRepo *repository.ForemanRepository
+	billingRepo *repository.BillingRepository // nil の場合は人数上限チェックなし
 	validator   *validator.ShiftValidator
 }
 
@@ -177,14 +178,15 @@ func NewShiftHandler(
 	shiftRepo *repository.ShiftRepository,
 	userRepo *repository.UserRepository,
 	foremanRepo *repository.ForemanRepository,
+	billingRepo *repository.BillingRepository,
 	v *validator.ShiftValidator,
 ) *ShiftHandler {
-	return &ShiftHandler{shiftRepo: shiftRepo, userRepo: userRepo, foremanRepo: foremanRepo, validator: v}
+	return &ShiftHandler{shiftRepo: shiftRepo, userRepo: userRepo, foremanRepo: foremanRepo, billingRepo: billingRepo, validator: v}
 }
 
 // GET /api/workers  — 作業者一覧
 func (h *ShiftHandler) GetWorkers(w http.ResponseWriter, r *http.Request) {
-	workers, err := h.userRepo.FindWorkers(r.Context())
+	workers, err := h.userRepo.FindWorkers(r.Context(), currentTenantID(r))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "データ取得エラー")
 		return
@@ -203,6 +205,19 @@ func (h *ShiftHandler) CreateWorker(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "社員ID・苗字・名前・パスワードは必須です")
 		return
 	}
+
+	// プランの作業者数上限チェック
+	if h.billingRepo != nil {
+		tenantID := currentTenantID(r)
+		if _, maxWorkers, err := h.billingRepo.GetTenantPlanAndMax(r.Context(), tenantID); err == nil && maxWorkers > 0 {
+			if n, err := h.userRepo.CountActiveWorkers(r.Context(), tenantID); err == nil && n >= maxWorkers {
+				writeError(w, http.StatusForbidden, fmt.Sprintf(
+					"作業者数がプランの上限（%d名）に達しています。「契約・お支払い」からプランをアップグレードしてください", maxWorkers))
+				return
+			}
+		}
+	}
+
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "パスワード処理エラー")
@@ -317,7 +332,7 @@ func (h *ShiftHandler) GetBoard(w http.ResponseWriter, r *http.Request) {
 		to = from.AddDate(0, 0, 13) // デフォルト2週間
 	}
 
-	assignments, err := h.shiftRepo.FindAssignmentsByDateRange(r.Context(), from, to)
+	assignments, err := h.shiftRepo.FindAssignmentsByDateRange(r.Context(), currentTenantID(r), from, to)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "データ取得エラー")
 		return
@@ -341,7 +356,7 @@ func (h *ShiftHandler) GetMyShifts(w http.ResponseWriter, r *http.Request) {
 		to = from.AddDate(0, 0, 13)
 	}
 
-	all, err := h.shiftRepo.FindAssignmentsByDateRange(r.Context(), from, to)
+	all, err := h.shiftRepo.FindAssignmentsByDateRange(r.Context(), currentTenantID(r), from, to)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "データ取得エラー")
 		return
@@ -378,15 +393,22 @@ func (h *ShiftHandler) CreateAssign(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 作業者情報取得（バリデーション用・職長資格チェック用）
-	users, _ := h.userRepo.FindAll(r.Context())
+	// 自テナントに存在しない user_id は拒否する（テナント越境アサイン防止）
+	users, _ := h.userRepo.FindAll(r.Context(), currentTenantID(r))
 	var userName string
 	var isQualified bool
+	found := false
 	for _, u := range users {
 		if u.ID == req.UserID {
 			userName = u.Name
 			isQualified = u.IsForemanQualified
+			found = true
 			break
 		}
+	}
+	if !found {
+		writeError(w, http.StatusNotFound, "作業者が見つかりません")
+		return
 	}
 
 	// ★ 二重アサインバリデーション
@@ -425,7 +447,7 @@ func (h *ShiftHandler) CreateAssign(w http.ResponseWriter, r *http.Request) {
 // DELETE /api/shifts/assign/{id}
 func (h *ShiftHandler) DeleteAssign(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err := h.shiftRepo.DeleteAssignment(r.Context(), id); err != nil {
+	if err := h.shiftRepo.DeleteAssignment(r.Context(), currentTenantID(r), id); err != nil {
 		writeError(w, http.StatusInternalServerError, "削除エラー")
 		return
 	}
@@ -569,7 +591,7 @@ func (h *DailyReportHandler) GetSummary(w http.ResponseWriter, r *http.Request) 
 	if month == 0 {
 		month = int(time.Now().Month())
 	}
-	rows, err := h.reportRepo.GetMonthlySummary(r.Context(), year, month)
+	rows, err := h.reportRepo.GetMonthlySummary(r.Context(), currentTenantID(r), year, month)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "データ取得エラー")
 		return

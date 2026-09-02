@@ -43,6 +43,26 @@ export function apiBillingPortal() {
   return request('/api/admin/billing/portal', { method: 'POST' });
 }
 
+// GET /api/reports/export — 月次日報CSVをダウンロード（管理者・ベーシック以上）
+export async function apiDownloadReportCSV(year, month) {
+  const res = await fetch(`/api/reports/export?year=${year}&month=${month}`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
+  const blob = await res.blob();
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `nippou_${year}-${String(month).padStart(2, '0')}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 // GET /api/shifts/board?from=YYYY-MM-DD&to=YYYY-MM-DD
 export function apiGetBoard(from, to) {
   return request(`/api/shifts/board?from=${from}&to=${to}`);

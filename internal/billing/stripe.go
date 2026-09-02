@@ -21,37 +21,50 @@ const apiBase = "https://api.stripe.com/v1"
 
 // Plan ごとの上限人数
 var PlanMaxWorkers = map[string]int{
-	"basic": 15,
-	"pro":   50,
+	"entry": 10,
+	"basic": 50,
+	"pro":   100,
+}
+
+// ValidPlan はプラン名の妥当性を確認する
+func ValidPlan(plan string) bool {
+	_, ok := PlanMaxWorkers[plan]
+	return ok
 }
 
 type Client struct {
 	secretKey     string
 	webhookSecret string
-	priceBasic    string // StripeのPrice ID (basic月額)
-	pricePro      string // StripeのPrice ID (pro月額)
+	prices        map[string]string // plan名 → Stripe Price ID
 	httpClient    *http.Client
 }
 
 // New は設定が揃っていれば Client を返す。揃っていなければ nil (課金機能無効)。
-func New(secretKey, webhookSecret, priceBasic, pricePro string) *Client {
-	if secretKey == "" || webhookSecret == "" || priceBasic == "" || pricePro == "" {
+func New(secretKey, webhookSecret, priceEntry, priceBasic, pricePro string) *Client {
+	if secretKey == "" || webhookSecret == "" || priceEntry == "" || priceBasic == "" || pricePro == "" {
 		return nil
 	}
 	return &Client{
 		secretKey:     secretKey,
 		webhookSecret: webhookSecret,
-		priceBasic:    priceBasic,
-		pricePro:      pricePro,
+		prices:        map[string]string{"entry": priceEntry, "basic": priceBasic, "pro": pricePro},
 		httpClient:    &http.Client{Timeout: 15 * time.Second},
 	}
 }
 
 func (c *Client) PriceIDFor(plan string) string {
-	if plan == "pro" {
-		return c.pricePro
+	return c.prices[plan]
+}
+
+// PlanForPrice はStripe Price IDからプラン名を逆引きする（不明なら空文字）。
+// Customer Portal でのプラン変更をWebhookで追随するために使う。
+func (c *Client) PlanForPrice(priceID string) string {
+	for plan, id := range c.prices {
+		if id == priceID {
+			return plan
+		}
 	}
-	return c.priceBasic
+	return ""
 }
 
 // post はStripe APIへフォームエンコードでPOSTし、JSONレスポンスをdstへデコードする
@@ -132,8 +145,24 @@ type Event struct {
 			Subscription string            `json:"subscription"`
 			Status       string            `json:"status"`
 			Metadata     map[string]string `json:"metadata"`
+			// subscription オブジェクトの契約内容（プラン変更の追随に使う）
+			Items struct {
+				Data []struct {
+					Price struct {
+						ID string `json:"id"`
+					} `json:"price"`
+				} `json:"data"`
+			} `json:"items"`
 		} `json:"object"`
 	} `json:"data"`
+}
+
+// PriceID はsubscriptionイベントの現在のPrice IDを返す（なければ空文字）
+func (e *Event) PriceID() string {
+	if len(e.Data.Object.Items.Data) > 0 {
+		return e.Data.Object.Items.Data[0].Price.ID
+	}
+	return ""
 }
 
 // VerifyAndParse はStripe-Signatureヘッダーを検証し、正当ならイベントを返す。

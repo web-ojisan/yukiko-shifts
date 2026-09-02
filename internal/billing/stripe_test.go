@@ -77,10 +77,10 @@ func TestVerifyAndParse_MalformedHeader(t *testing.T) {
 }
 
 func TestNew_DisabledWhenUnconfigured(t *testing.T) {
-	if New("", "", "", "") != nil {
+	if New("", "", "", "", "") != nil {
 		t.Fatal("未設定でもClientが返った")
 	}
-	if New("sk", "whsec", "price_b", "price_p") == nil {
+	if New("sk", "whsec", "price_e", "price_b", "price_p") == nil {
 		t.Fatal("設定済みなのにnil")
 	}
 }

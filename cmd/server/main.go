@@ -87,7 +87,8 @@ func main() {
 	pushSender := push.NewSender(vapidPrivateKey, vapidPublicKey)
 
 	authH    := handler.NewAuthHandler(userRepo, tokenAuth)
-	shiftH   := handler.NewShiftHandler(shiftRepo, userRepo, foremanRepo, shiftVal)
+	shiftH   := handler.NewShiftHandler(shiftRepo, userRepo, foremanRepo, billingRepo, shiftVal)
+	exportH  := handler.NewExportHandler(reportRepo, billingRepo)
 	reportH  := handler.NewDailyReportHandler(reportRepo)
 	siteH    := handler.NewSiteHandler(siteRepo)
 	lockH    := handler.NewLockHandler(lockRepo)
@@ -100,6 +101,7 @@ func main() {
 	stripeClient := billing.New(
 		os.Getenv("STRIPE_SECRET_KEY"),
 		os.Getenv("STRIPE_WEBHOOK_SECRET"),
+		os.Getenv("STRIPE_PRICE_ENTRY"),
 		os.Getenv("STRIPE_PRICE_BASIC"),
 		os.Getenv("STRIPE_PRICE_PRO"),
 	)
@@ -207,6 +209,8 @@ func main() {
 
 		r.Get("/api/reports/summary",
 			handler.RequireAdmin(reportH.GetSummary))
+		r.Get("/api/reports/export",
+			handler.RequireAdmin(exportH.MonthlyCSV))
 
 		// シフトロック
 		r.Get("/api/shifts/lock",                  lockH.GetStatus)

@@ -67,8 +67,8 @@ func (h *BillingHandler) SignupCheckout(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, "会社名を入力してください（100文字以内）")
 		return
 	}
-	if req.Plan != "basic" && req.Plan != "pro" {
-		writeError(w, http.StatusBadRequest, "プランは basic / pro のいずれかを指定してください")
+	if !billing.ValidPlan(req.Plan) {
+		writeError(w, http.StatusBadRequest, "プランは entry / basic / pro のいずれかを指定してください")
 		return
 	}
 
@@ -114,6 +114,15 @@ func (h *BillingHandler) Webhook(w http.ResponseWriter, r *http.Request) {
 			log.Printf("billing: 契約状態更新失敗 sub=%s: %v", ev.Data.Object.ID, err)
 		} else {
 			log.Printf("billing: 契約状態更新 sub=%s → %s", ev.Data.Object.ID, status)
+		}
+		// ポータルでのプラン変更を追随（Price IDからプランを逆引き）
+		if plan := h.stripe.PlanForPrice(ev.PriceID()); plan != "" {
+			if err := h.repo.UpdatePlanBySubscription(r.Context(),
+				ev.Data.Object.ID, plan, billing.PlanMaxWorkers[plan]); err != nil {
+				log.Printf("billing: プラン変更反映失敗 sub=%s: %v", ev.Data.Object.ID, err)
+			} else {
+				log.Printf("billing: プラン変更 sub=%s → %s", ev.Data.Object.ID, plan)
+			}
 		}
 		w.WriteHeader(http.StatusOK)
 	case "customer.subscription.deleted":

@@ -402,3 +402,17 @@ type SignupProvision struct {
 	InitialPassword   *string   `db:"initial_password"    json:"initial_password,omitempty"`
 	CreatedAt         time.Time `db:"created_at"          json:"-"`
 }
+
+// ReportExportRow は月次日報CSVエクスポートの1行分（給与計算向け）
+type ReportExportRow struct {
+	WorkDate      string       `db:"work_date"`
+	EmployeeID    string       `db:"employee_id"`
+	UserName      string       `db:"user_name"`
+	Status        AttendStatus `db:"status"`
+	SiteName      string       `db:"site_name"`
+	SiteName2     string       `db:"site_name2"`
+	ManDays       float64      `db:"man_days"`
+	OvertimeHours float64      `db:"overtime_hours"`
+	UsedCar       bool         `db:"used_car"`
+	Note          string       `db:"note"`
+}

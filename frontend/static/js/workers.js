@@ -1,7 +1,7 @@
 // workers.js — 作業者管理（管理者用）
 
 import { apiGetWorkers, apiCreateWorker, apiUpdateWorker, apiRegenerateQR,
-         apiGetCryptoSettings, apiCreateCryptoSettings } from './api.js';
+         apiGetCryptoSettings, apiCreateCryptoSettings, apiDownloadReportCSV } from './api.js';
 import { isUnlocked, unlock, setup, encryptValue } from './crypto.js';
 
 import { escHtml } from './util.js';
@@ -132,7 +132,14 @@ function render(root) {
     <div class="wm-page">
       <div class="wm-header">
         <h2 class="wm-title">作業者管理</h2>
-        <button class="btn btn-primary" id="wm-add-btn">＋ 追加</button>
+        <div class="wm-header-actions">
+          <span class="wm-export-group">
+            <input type="month" id="wm-export-month" class="form-control wm-month-input"
+              value="${new Date().toISOString().slice(0, 7)}">
+            <button class="btn btn-sm" id="wm-export-btn" title="月次日報をCSVでダウンロード（給与計算用）">📥 日報CSV</button>
+          </span>
+          <button class="btn btn-primary" id="wm-add-btn">＋ 追加</button>
+        </div>
       </div>
       ${cryptoBanner}
       <table class="wm-table">
@@ -150,6 +157,21 @@ function render(root) {
     <div class="wm-modal-overlay" id="wm-overlay" style="display:none">
       <div class="wm-modal" id="wm-modal"></div>
     </div>`;
+
+  document.getElementById('wm-export-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('wm-export-btn');
+    const val = document.getElementById('wm-export-month')?.value; // "YYYY-MM"
+    if (!val) { alert('対象月を選択してください'); return; }
+    const [y, m] = val.split('-').map(Number);
+    btn.disabled = true;
+    try {
+      await apiDownloadReportCSV(y, m);
+    } catch (e) {
+      alert(e.message); // entryプランの場合はアップグレード案内が表示される
+    } finally {
+      btn.disabled = false;
+    }
+  });
 
   document.getElementById('wm-crypto-enable-btn')?.addEventListener('click', enableCrypto);
   document.getElementById('wm-crypto-unlock-btn')?.addEventListener('click', unlockCrypto);

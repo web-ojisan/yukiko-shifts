@@ -61,16 +61,16 @@ func (r *ShiftRepository) FindAssignmentsBySiteDate(ctx context.Context, siteID 
 }
 
 // FindAssignmentsByDateRange は日付範囲の全アサインを返す（ボード表示用）
-func (r *ShiftRepository) FindAssignmentsByDateRange(ctx context.Context, from, to time.Time) ([]model.ShiftAssignment, error) {
+func (r *ShiftRepository) FindAssignmentsByDateRange(ctx context.Context, tenantID int64, from, to time.Time) ([]model.ShiftAssignment, error) {
 	const q = `
 		SELECT sa.*, u.name AS user_name, s.name AS site_name
 		FROM shift_assignments sa
 		JOIN users u ON sa.user_id = u.id
 		JOIN sites s ON sa.site_id = s.id
-		WHERE sa.work_date BETWEEN ? AND ?
+		WHERE sa.tenant_id = ? AND sa.work_date BETWEEN ? AND ?
 		ORDER BY sa.work_date, s.name, u.name`
 	var rows []model.ShiftAssignment
-	if err := r.db.SelectContext(ctx, &rows, q,
+	if err := r.db.SelectContext(ctx, &rows, q, tenantID,
 		from.Format("2006-01-02"), to.Format("2006-01-02")); err != nil {
 		return nil, fmt.Errorf("FindAssignmentsByDateRange: %w", err)
 	}
@@ -90,9 +90,10 @@ func (r *ShiftRepository) CreateAssignment(ctx context.Context, a model.ShiftAss
 	return res.LastInsertId()
 }
 
-// DeleteAssignment はアサインを削除する
-func (r *ShiftRepository) DeleteAssignment(ctx context.Context, id int64) error {
-	_, err := r.db.ExecContext(ctx, `DELETE FROM shift_assignments WHERE id = ?`, id)
+// DeleteAssignment はアサインを削除する（自テナントのもののみ）
+func (r *ShiftRepository) DeleteAssignment(ctx context.Context, tenantID, id int64) error {
+	_, err := r.db.ExecContext(ctx,
+		`DELETE FROM shift_assignments WHERE id = ? AND tenant_id = ?`, id, tenantID)
 	return err
 }
 
@@ -222,7 +223,7 @@ func (r *DailyReportRepository) FindMonthlyMissing(ctx context.Context, userID i
 }
 
 // GetMonthlySummary は月次サマリを全作業者分取得する（管理者用）
-func (r *DailyReportRepository) GetMonthlySummary(ctx context.Context, year, month int) ([]model.MonthlySummaryRow, error) {
+func (r *DailyReportRepository) GetMonthlySummary(ctx context.Context, tenantID int64, year, month int) ([]model.MonthlySummaryRow, error) {
 	const q = `
 		SELECT
 			u.id   AS user_id,
@@ -241,15 +242,46 @@ func (r *DailyReportRepository) GetMonthlySummary(ctx context.Context, year, mon
 			ON sa.user_id = u.id
 			AND strftime('%Y', sa.work_date) = ?
 			AND strftime('%m', sa.work_date) = ?
-		WHERE u.role = 'worker' AND u.status = 'active'
+		WHERE u.tenant_id = ? AND u.role = 'worker' AND u.status = 'active'
 		GROUP BY u.id, u.name
 		ORDER BY u.name`
 	ys := fmt.Sprintf("%04d", year)
 	ms := fmt.Sprintf("%02d", month)
 	var rows []model.MonthlySummaryRow
-	err := r.db.SelectContext(ctx, &rows, q, ys, ms, ys, ms)
+	err := r.db.SelectContext(ctx, &rows, q, ys, ms, ys, ms, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("GetMonthlySummary: %w", err)
+	}
+	return rows, nil
+}
+
+// ExportMonthlyReports は月次の日報明細を給与計算向けに全作業者分返す（管理者用CSVエクスポート）
+func (r *DailyReportRepository) ExportMonthlyReports(ctx context.Context, tenantID int64, year, month int) ([]model.ReportExportRow, error) {
+	const q = `
+		SELECT
+			strftime('%Y-%m-%d', dr.work_date) AS work_date,
+			u.employee_id                       AS employee_id,
+			u.name                              AS user_name,
+			dr.status                           AS status,
+			COALESCE(s1.name, '')               AS site_name,
+			COALESCE(s2.name, '')               AS site_name2,
+			dr.man_days                         AS man_days,
+			dr.overtime_hours                   AS overtime_hours,
+			dr.used_car                         AS used_car,
+			COALESCE(dr.note, '')               AS note
+		FROM daily_reports dr
+		JOIN users u        ON u.id = dr.user_id
+		LEFT JOIN sites s1  ON s1.id = dr.site_id
+		LEFT JOIN sites s2  ON s2.id = dr.site_id2
+		WHERE u.tenant_id = ?
+			AND strftime('%Y', dr.work_date) = ?
+			AND strftime('%m', dr.work_date) = ?
+		ORDER BY u.employee_id, dr.work_date`
+	var rows []model.ReportExportRow
+	err := r.db.SelectContext(ctx, &rows, q,
+		tenantID, fmt.Sprintf("%04d", year), fmt.Sprintf("%02d", month))
+	if err != nil {
+		return nil, fmt.Errorf("ExportMonthlyReports: %w", err)
 	}
 	return rows, nil
 }
@@ -350,17 +382,25 @@ func (r *UserRepository) FindByEmployeeIDAndSlug(ctx context.Context, slug, eid 
 	return &u, err
 }
 
-func (r *UserRepository) FindAll(ctx context.Context) ([]model.User, error) {
+func (r *UserRepository) FindAll(ctx context.Context, tenantID int64) ([]model.User, error) {
 	var rows []model.User
 	err := r.db.SelectContext(ctx, &rows,
-		`SELECT * FROM users WHERE status != 'inactive' ORDER BY name`)
+		`SELECT * FROM users WHERE tenant_id = ? AND status != 'inactive' ORDER BY name`, tenantID)
 	return rows, err
 }
 
-func (r *UserRepository) FindWorkers(ctx context.Context) ([]model.User, error) {
+// CountActiveWorkers はテナントの有効な作業者数を返す（プラン上限チェック用）
+func (r *UserRepository) CountActiveWorkers(ctx context.Context, tenantID int64) (int, error) {
+	var n int
+	err := r.db.GetContext(ctx, &n,
+		`SELECT COUNT(*) FROM users WHERE tenant_id = ? AND role = 'worker' AND status = 'active'`, tenantID)
+	return n, err
+}
+
+func (r *UserRepository) FindWorkers(ctx context.Context, tenantID int64) ([]model.User, error) {
 	var rows []model.User
 	err := r.db.SelectContext(ctx, &rows,
-		`SELECT * FROM users WHERE role = 'worker' AND status = 'active' ORDER BY name`)
+		`SELECT * FROM users WHERE tenant_id = ? AND role = 'worker' AND status = 'active' ORDER BY name`, tenantID)
 	return rows, err
 }
 

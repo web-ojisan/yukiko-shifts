@@ -2578,3 +2578,8 @@ button.week-foreman-badge:hover { filter: brightness(1.15); }
 
 /* ─── ログイン: 会社コード任意ラベル ──────────────────────── */
 .login-optional { font-weight: 400; font-size: 0.75rem; color: #94a3b8; }
+
+/* ─── 作業者管理: 月次CSVエクスポート ────────────────────── */
+.wm-header-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.wm-export-group { display: inline-flex; align-items: center; gap: 6px; }
+.wm-month-input { width: 150px; padding: 6px 8px; font-size: 0.85rem; }

@@ -300,7 +300,8 @@ docker compose down
 
 `/signup` からのセルフサーブ契約を有効にする手順:
 
-1. [Stripeダッシュボード](https://dashboard.stripe.com)で商品を2つ作成（basic月額 / pro月額）し、各 **Price ID**（`price_...`）を控える
+1. [Stripeダッシュボード](https://dashboard.stripe.com)で商品を3つ作成（entry / basic / pro の月額）し、各 **Price ID**（`price_...`）を控える
+   - プラン内容: entry=作業員10名まで / basic=50名まで+月次日報CSV / pro=100名まで
 2. 開発者 → APIキー から **シークレットキー**（`sk_...`）を取得
 3. 開発者 → Webhook でエンドポイント `https://<公開URL>/api/stripe/webhook` を登録し、
    イベント `checkout.session.completed` / `customer.subscription.updated` /
@@ -309,12 +310,13 @@ docker compose down
    ```
    STRIPE_SECRET_KEY=sk_...
    STRIPE_WEBHOOK_SECRET=whsec_...
+   STRIPE_PRICE_ENTRY=price_...
    STRIPE_PRICE_BASIC=price_...
    STRIPE_PRICE_PRO=price_...
    BASE_URL=https://<公開URL>
    ```
 
-4変数が揃っていない場合、課金機能は無効のまま従来どおり動作します。
+5変数が揃っていない場合、課金機能は無効のまま従来どおり動作します。
 ローカルでのWebhookテストは `stripe listen --forward-to localhost:8989/api/stripe/webhook`（Stripe CLI）が便利です。
 
 > 💡 決済情報・請求先はStripe側にのみ保存され、本アプリのDBには各種IDのみが残ります。
@@ -352,7 +354,8 @@ docker run --rm golang:1.26-alpine sh -c \
 - Webプッシュ通知（希望提出・毎日19時の翌日シフトリマインド）
 - 出退勤打刻（`ATTENDANCE_ENABLED=true`・写真つき）
 - 電話番号E2E暗号化（詳細は [PRIVACY.md](PRIVACY.md)）
+- 月次日報CSVエクスポート（給与計算向け・ベーシックプラン以上）
+- Stripeセルフサーブ課金（3プラン・人数上限・オンライン解約）
 
 ### 未実装
-- 月次CSV/Excel出力
 - パスワードリセット

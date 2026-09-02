@@ -102,6 +102,12 @@ frontend/static/css/style.css
 - ログインは会社コード(テナントslug)対応: 同一社員IDが複数テナントに存在する場合は
   `company_code` 必須。QRログインはトークンがグローバル一意なので影響なし
 - STRIPE_* 未設定なら課金機能は全体が無効(既存機能に影響なし)。決済情報はStripe側にのみ存在する
+- プラン: entry(10名) / basic(50名) / pro(100名)。上限は `billing.PlanMaxWorkers` が正。
+  作業者追加時に `max_workers` を強制、**月次日報CSVエクスポート(`/api/reports/export`)は
+  basic以上限定**(entryは403)。ポータルでのプラン変更は `customer.subscription.updated` の
+  Price ID逆引きで `tenants.plan/max_workers` に自動追随
+- **テナント分離の鉄則**: repositoryの全クエリは tenant_id で絞る(横断してよいのは
+  ログイン検索・QRトークン検索のみ)。過去にFindWorkers等で漏れがあった — 新クエリ追加時は必ず確認
 
 ### 機能フラグ
 
@@ -124,7 +130,7 @@ frontend/static/css/style.css
 | `BASE_URL` | 課金時必須 | 公開URL(Checkoutのリダイレクト先。デフォルト `http://localhost:<PORT>`) |
 | `STRIPE_SECRET_KEY` | 任意 | Stripe秘密鍵。4つ全て設定で課金有効 |
 | `STRIPE_WEBHOOK_SECRET` | 任意 | Webhook署名シークレット(`whsec_...`) |
-| `STRIPE_PRICE_BASIC` / `STRIPE_PRICE_PRO` | 任意 | 各プランのStripe Price ID |
+| `STRIPE_PRICE_ENTRY` / `STRIPE_PRICE_BASIC` / `STRIPE_PRICE_PRO` | 任意 | 各プランのStripe Price ID(5変数全て設定で課金有効) |
 | `DATA_DIR` | 任意 | 打刻写真の保存先 (デフォルト `./data`) |
 
 ## 規約・注意点

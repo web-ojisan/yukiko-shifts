@@ -44,7 +44,7 @@ func TestQRLogin_ValidToken_Returns200HTML(t *testing.T) {
 	userRepo := repository.NewUserRepository(db)
 	ta       := jwtauth.New("HS256", []byte("test-secret"), nil)
 	authH    := handler.NewAuthHandler(userRepo, ta)
-	shiftH   := handler.NewShiftHandler(nil, userRepo, nil, nil)
+	shiftH   := handler.NewShiftHandler(nil, userRepo, nil, nil, nil)
 	router   := buildQRRouter(authH, shiftH, ta)
 	ctx      := context.Background()
 
@@ -96,7 +96,7 @@ func TestQRLogin_InvalidToken_Returns401(t *testing.T) {
 	userRepo := repository.NewUserRepository(db)
 	ta       := jwtauth.New("HS256", []byte("test-secret"), nil)
 	authH    := handler.NewAuthHandler(userRepo, ta)
-	shiftH   := handler.NewShiftHandler(nil, userRepo, nil, nil)
+	shiftH   := handler.NewShiftHandler(nil, userRepo, nil, nil, nil)
 	router   := buildQRRouter(authH, shiftH, ta)
 
 	req := httptest.NewRequest("GET", "/qr-login?token=nonexistent-token", nil)
@@ -113,7 +113,7 @@ func TestQRLogin_MissingToken_Returns400(t *testing.T) {
 	userRepo := repository.NewUserRepository(db)
 	ta       := jwtauth.New("HS256", []byte("test-secret"), nil)
 	authH    := handler.NewAuthHandler(userRepo, ta)
-	shiftH   := handler.NewShiftHandler(nil, userRepo, nil, nil)
+	shiftH   := handler.NewShiftHandler(nil, userRepo, nil, nil, nil)
 	router   := buildQRRouter(authH, shiftH, ta)
 
 	req := httptest.NewRequest("GET", "/qr-login", nil) // token パラメータなし
@@ -132,7 +132,7 @@ func TestRegenerateQR_Admin_Returns200WithNewToken(t *testing.T) {
 	userRepo := repository.NewUserRepository(db)
 	ta       := jwtauth.New("HS256", []byte("test-secret"), nil)
 	authH    := handler.NewAuthHandler(userRepo, ta)
-	shiftH   := handler.NewShiftHandler(nil, userRepo, nil, nil)
+	shiftH   := handler.NewShiftHandler(nil, userRepo, nil, nil, nil)
 	router   := buildQRRouter(authH, shiftH, ta)
 	ctx      := context.Background()
 
@@ -182,7 +182,7 @@ func TestRegenerateQR_Worker_Returns403(t *testing.T) {
 	userRepo := repository.NewUserRepository(db)
 	ta       := jwtauth.New("HS256", []byte("test-secret"), nil)
 	authH    := handler.NewAuthHandler(userRepo, ta)
-	shiftH   := handler.NewShiftHandler(nil, userRepo, nil, nil)
+	shiftH   := handler.NewShiftHandler(nil, userRepo, nil, nil, nil)
 	router   := buildQRRouter(authH, shiftH, ta)
 
 	req := httptest.NewRequest("POST", "/api/admin/workers/2/regenerate-qr", nil)
@@ -202,7 +202,7 @@ func TestGetWorkerQRTokens_ReturnsAllWorkers(t *testing.T) {
 	userRepo := repository.NewUserRepository(db)
 	ta       := jwtauth.New("HS256", []byte("test-secret"), nil)
 	authH    := handler.NewAuthHandler(userRepo, ta)
-	shiftH   := handler.NewShiftHandler(nil, userRepo, nil, nil)
+	shiftH   := handler.NewShiftHandler(nil, userRepo, nil, nil, nil)
 	router   := buildQRRouter(authH, shiftH, ta)
 	ctx      := context.Background()
 

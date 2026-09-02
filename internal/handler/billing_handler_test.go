@@ -47,7 +47,7 @@ func newBillingHandler(t *testing.T) (*handler.BillingHandler, *repository.Billi
 	t.Helper()
 	db := newBillingDB(t)
 	repo := repo(db)
-	stripe := billing.New("sk_test_x", testWebhookSecret, "price_basic", "price_pro")
+	stripe := billing.New("sk_test_x", testWebhookSecret, "price_entry", "price_basic", "price_pro")
 	return handler.NewBillingHandler(repo, stripe, "http://localhost:8989"), repo, db
 }
 
@@ -98,7 +98,7 @@ func TestWebhook_CheckoutCompleted_ProvisionsTenant(t *testing.T) {
 	if err := db.Get(&tenant, `SELECT id, name, slug, plan, max_workers, status FROM tenants WHERE stripe_subscription_id = 'sub_1'`); err != nil {
 		t.Fatalf("tenant not created: %v", err)
 	}
-	if tenant.Name != "テスト建設株式会社" || tenant.Plan != "basic" || tenant.MaxWorkers != 15 || tenant.Status != "active" {
+	if tenant.Name != "テスト建設株式会社" || tenant.Plan != "basic" || tenant.MaxWorkers != 50 || tenant.Status != "active" {
 		t.Errorf("tenant fields: %+v", tenant)
 	}
 	if len(tenant.Slug) != 6 {
