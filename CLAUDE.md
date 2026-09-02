@@ -145,4 +145,5 @@ frontend/static/css/style.css
   `frontend/static/` に置く
 - ルート直下に古い `shift.db` が残っているとログイン不能になる典型トラブルあり
   (README のトラブルシューティング参照)
-- API仕様は `API_DESIGN.md`、運用手順は `manual.md`
+- API仕様は `API_DESIGN.md`、運用手順は `manual.md`、
+  未着手課題と着手トリガーは `BACKLOG.md`(新しい課題が出たらここに追記する)
