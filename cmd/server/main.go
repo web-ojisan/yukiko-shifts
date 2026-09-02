@@ -159,6 +159,9 @@ func main() {
 	r.Get("/signup/complete", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./frontend/static/signup-complete.html")
 	})
+	r.Get("/tokushoho", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./frontend/static/tokushoho.html")
+	})
 
 	// 契約ポータル: 契約停止中でも管理者が支払いを直せるよう、状態チェックの外に置く
 	r.Group(func(r chi.Router) {

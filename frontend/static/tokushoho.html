@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>特定商取引法に基づく表記 — 北のオヤカタ</title>
+<style>
+  :root {
+    --snow: #F2F4F6; --card: #FFFFFF; --ink: #182530; --muted: #55646E;
+    --sea: #2C5A78; --line: #C7D1D7; --todo-bg: #FFF3CD; --todo: #7A5C00;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--snow); color: var(--ink);
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    line-height: 1.9; font-size: 15px;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 40px 20px 80px; }
+  h1 { font-size: 24px; font-weight: 800; margin: 0 0 8px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 28px; }
+  table { border-collapse: collapse; width: 100%; background: var(--card); }
+  th, td { border: 1px solid var(--line); padding: 14px 18px; text-align: left; vertical-align: top; }
+  th { width: 30%; background: #E9EEF2; font-weight: 700; font-size: 14px; }
+  td { font-size: 14.5px; }
+  .todo {
+    background: var(--todo-bg); color: var(--todo);
+    padding: 1px 8px; border-radius: 4px; font-size: 13px;
+  }
+  .note { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+  a { color: var(--sea); }
+  .back { display: inline-block; margin-top: 28px; font-size: 14px; }
+  @media (max-width: 560px) { th, td { display: block; width: 100%; } th { border-bottom: none; } td { border-top: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>特定商取引法に基づく表記</h1>
+  <p class="sub">シフト・日報管理サービス「北のオヤカタ」に関する表記です。</p>
+
+  <table>
+    <tr>
+      <th>販売事業者</th>
+      <td><span class="todo">【事業者名を記入】</span></td>
+    </tr>
+    <tr>
+      <th>運営責任者</th>
+      <td><span class="todo">【氏名を記入】</span></td>
+    </tr>
+    <tr>
+      <th>所在地</th>
+      <td>
+        <span class="todo">【住所を記入】</span>
+        <div class="note">※個人事業主の場合、「請求があったときは遅滞なく開示します」と記載し、
+        請求時にメール等で開示する運用も認められています。その場合はこの欄をその文言に差し替えてください。</div>
+      </td>
+    </tr>
+    <tr>
+      <th>電話番号</th>
+      <td>
+        <span class="todo">【電話番号を記入】</span>
+        <div class="note">※所在地と同様、「請求があったときは遅滞なく開示します」との記載でも可。</div>
+      </td>
+    </tr>
+    <tr>
+      <th>お問い合わせ先</th>
+      <td><span class="todo">【メールアドレスまたは問い合わせフォームURLを記入】</span></td>
+    </tr>
+    <tr>
+      <th>販売URL</th>
+      <td><span class="todo">【サービスの公開URLを記入】</span></td>
+    </tr>
+    <tr>
+      <th>販売価格</th>
+      <td>
+        ベーシックプラン: 月額 <span class="todo">【金額】</span>円（税込）／作業員15名まで<br>
+        プロプラン: 月額 <span class="todo">【金額】</span>円（税込）／作業員50名まで<br>
+        <div class="note">価格は申込ページおよび決済ページにも表示されます。</div>
+      </td>
+    </tr>
+    <tr>
+      <th>商品代金以外の必要料金</th>
+      <td>インターネット接続に必要な通信費（お客様のご負担となります）</td>
+    </tr>
+    <tr>
+      <th>お支払い方法</th>
+      <td>クレジットカード（決済代行: Stripe, Inc.）。法人カードもご利用いただけます。</td>
+    </tr>
+    <tr>
+      <th>お支払い時期</th>
+      <td>お申し込み時に初回分を課金し、以降は毎月同日に自動課金されます。</td>
+    </tr>
+    <tr>
+      <th>サービスの提供時期</th>
+      <td>決済完了後、直ちにご利用いただけます（申込完了画面にログイン情報を表示します）。</td>
+    </tr>
+    <tr>
+      <th>解約について</th>
+      <td>
+        管理画面の「契約・お支払い」からいつでもオンラインで解約できます。
+        解約手続き完了をもって次回以降の課金は停止されます。
+        <span class="todo">【日割り返金の有無を記入（例: 当月分の日割り返金は行いません）】</span><br>
+        解約時、登録データは標準形式のファイルでお渡しし、サーバーからは完全に削除します。
+      </td>
+    </tr>
+    <tr>
+      <th>返品・キャンセルについて</th>
+      <td>
+        サービスの性質上、提供開始後の返金には応じられません。
+        ただし、弊社の責による重大な障害でサービスを利用できなかった場合は、個別にご相談のうえ対応いたします。
+      </td>
+    </tr>
+    <tr>
+      <th>動作環境</th>
+      <td>モダンブラウザ（Chrome / Safari / Edge の最新版）を搭載したPC・スマートフォン・タブレット</td>
+    </tr>
+  </table>
+
+  <a class="back" href="/signup">← 申込ページへ戻る</a>
+</div>
+</body>
+</html>
